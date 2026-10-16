@@ -73,6 +73,7 @@ const DEFAULT_FEATURED: Product[] = [
     price: 3500,
     unit: "kg",
     image_url: "/images/plantain.jpg",
+    vendor_profiles: { business_name: "Green Harvest Farms", verified: true },
   },
   {
     id: 102,
@@ -80,6 +81,7 @@ const DEFAULT_FEATURED: Product[] = [
     price: 5200,
     unit: "kg",
     image_url: "/images/fish.jpg",
+    vendor_profiles: { business_name: "Lakeside Aqua Farms", verified: true },
   },
   {
     id: 103,
@@ -87,6 +89,7 @@ const DEFAULT_FEATURED: Product[] = [
     price: 2200,
     unit: "kg",
     image_url: "/images/tubers.jpg",
+    vendor_profiles: { business_name: "Golden Tuber Agro", verified: true },
   },
   {
     id: 104,
@@ -94,6 +97,7 @@ const DEFAULT_FEATURED: Product[] = [
     price: 4500,
     unit: "tuber",
     image_url: "/images/tubers.jpg",
+    vendor_profiles: { business_name: "Mama Ngozi Produce", verified: false },
   },
 ];
 
