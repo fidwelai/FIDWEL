@@ -88,6 +88,8 @@ export default function RegisterPage() {
       email: email.trim(),
       password,
       options: {
+        emailRedirectTo:
+          process.env.NEXT_PUBLIC_SITE_URL || window.location.origin,
         data: {
           full_name: fullName.trim(),
           phone: phone.trim(),
