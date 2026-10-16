@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { resolveImageContentType } from "@/lib/image-upload";
+import { looksLikeImage, prepareAvatarImage } from "@/lib/image-upload";
 
 export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
@@ -22,12 +22,12 @@ export default function RegisterPage() {
   function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!resolveImageContentType(file)) {
-      setMessage("Please choose a JPG, PNG or WebP image.");
+    if (!looksLikeImage(file)) {
+      setMessage("Please choose an image file (JPG or PNG).");
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      setMessage("Profile picture must be smaller than 2 MB.");
+    if (file.size > 25 * 1024 * 1024) {
+      setMessage("That image is too large. Please choose one under 25 MB.");
       return;
     }
     setMessage("");
@@ -54,29 +54,34 @@ export default function RegisterPage() {
 
     setLoading(true);
 
-    // Upload avatar if provided
+    // Upload avatar if provided (downscaled to keep it small and well-supported)
     let avatarUrl: string | null = null;
     if (avatarFile) {
-      const contentType = resolveImageContentType(avatarFile);
-      if (!contentType) {
+      try {
+        const prepared = await prepareAvatarImage(avatarFile);
+        const path = `public/${Date.now()}-${Math.random().toString(36).slice(2)}.${prepared.extension}`;
+        const { error: uploadError } = await supabase.storage
+          .from("avatars")
+          .upload(path, prepared.blob, {
+            upsert: false,
+            contentType: prepared.contentType,
+          });
+        if (uploadError) {
+          setLoading(false);
+          setMessage("Failed to upload profile picture. Please try again.");
+          return;
+        }
+        const { data: urlData } = supabase.storage
+          .from("avatars")
+          .getPublicUrl(path);
+        avatarUrl = urlData.publicUrl;
+      } catch {
         setLoading(false);
-        setMessage("Please choose a JPG, PNG or WebP image.");
+        setMessage(
+          "We couldn't read that image. Please try a different photo."
+        );
         return;
       }
-      const ext = contentType.split("/")[1];
-      const path = `public/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(path, avatarFile, { upsert: false, contentType });
-      if (uploadError) {
-        setLoading(false);
-        setMessage("Failed to upload profile picture. Please try again.");
-        return;
-      }
-      const { data: urlData } = supabase.storage
-        .from("avatars")
-        .getPublicUrl(path);
-      avatarUrl = urlData.publicUrl;
     }
 
     const { data, error } = await supabase.auth.signUp({
@@ -163,7 +168,7 @@ export default function RegisterPage() {
                 </span>
               )}
             </button>
-            <p className="text-xs text-gray-500">Optional · JPG, PNG or WebP · Max 2 MB</p>
+            <p className="text-xs text-gray-500">Optional · JPG or PNG · Auto-optimized</p>
             <input
               ref={fileInputRef}
               type="file"
