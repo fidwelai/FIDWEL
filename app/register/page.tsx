@@ -1,11 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { looksLikeImage, prepareAvatarImage } from "@/lib/image-upload";
+import { resolveAccountDestination } from "@/lib/account";
 
 export default function RegisterPage() {
+  const [checking, setChecking] = useState(true);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -18,6 +20,49 @@ export default function RegisterPage() {
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // A signed-in user should never see the create-account form again.
+  useEffect(() => {
+    let active = true;
+
+    async function redirectIfSignedIn() {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!active) return;
+
+        if (!user) {
+          setChecking(false);
+          return;
+        }
+
+        window.location.replace(await resolveAccountDestination(user));
+      } catch {
+        if (active) {
+          setChecking(false);
+        }
+      }
+    }
+
+    void redirectIfSignedIn();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setTimeout(() => {
+          void redirectIfSignedIn();
+        }, 0);
+      }
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -126,6 +171,14 @@ export default function RegisterPage() {
 
   const inputClass =
     "w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-green-600";
+
+  if (checking) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-10">
+        <p className="text-sm text-gray-500">Checking your session…</p>
+      </main>
+    );
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-10">

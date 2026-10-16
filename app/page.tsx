@@ -202,7 +202,33 @@ export default function Home() {
     }
 
     void loadAccountDestination();
+
+    // Keep the header in sync when the session appears, refreshes, or ends
+    // (e.g. right after logging in, confirming an email, or signing out).
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      // Defer: Supabase holds its auth lock while emitting this event, so
+      // awaiting other Supabase calls directly here can deadlock.
+      setTimeout(() => {
+        void loadAccountDestination();
+      }, 0);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    setUserEmail(null);
+    setAvatarUrl(null);
+    setStaffRole(null);
+    setUnreadNotifications(0);
+    setAccountDestination("/login");
+    router.replace("/");
+  }
 
   function toggleTheme() {
     const next = !document.documentElement.classList.contains("dark");
@@ -479,6 +505,27 @@ export default function Home() {
                 {userEmail ?? "Sign in"}
               </span>
             </Link>
+
+            {/* SIGN OUT */}
+            {userEmail && (
+              <button
+                type="button"
+                onClick={handleSignOut}
+                title="Sign out"
+                className={`hidden sm:flex items-center gap-1 rounded-full px-3 py-2 text-xs font-semibold transition ${
+                  isDarkMode
+                    ? "text-slate-300 hover:bg-slate-800 hover:text-red-400"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-red-600"
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                Sign out
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -720,7 +767,7 @@ export default function Home() {
             <Link href="/products" className="hover:text-green-700 transition">Products</Link>
             <Link href="/vendor/register" className="hover:text-green-700 transition">Vendors</Link>
             <Link href="/notifications" className="hover:text-green-700 transition">Notifications</Link>
-            <Link href="/login" className="hover:text-green-700 transition">Account</Link>
+            <Link href={accountDestination} className="hover:text-green-700 transition">Account</Link>
           </div>
           <div>© 2026 FIDWEL. All rights reserved.</div>
         </div>

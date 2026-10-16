@@ -1,15 +1,68 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { resolveAccountDestination } from "@/lib/account";
 
 export default function LoginPage() {
+  const [checking, setChecking] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+
+  // If the visitor already has a session, keep them signed in: send them
+  // straight to their account instead of showing the sign-in form again.
+  useEffect(() => {
+    let active = true;
+
+    async function redirectIfSignedIn() {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!active) return;
+
+        if (!user) {
+          setChecking(false);
+          return;
+        }
+
+        const params = new URLSearchParams(window.location.search);
+        const next = params.get("next");
+
+        if (next && next.startsWith("/") && !next.startsWith("//")) {
+          window.location.replace(next);
+          return;
+        }
+
+        window.location.replace(await resolveAccountDestination(user));
+      } catch {
+        if (active) {
+          setChecking(false);
+        }
+      }
+    }
+
+    void redirectIfSignedIn();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setTimeout(() => {
+          void redirectIfSignedIn();
+        }, 0);
+      }
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   async function handleLogin(
     event: React.FormEvent<HTMLFormElement>
@@ -48,6 +101,14 @@ export default function LoginPage() {
 
   const inputClass =
     "w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-green-600";
+
+  if (checking) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-10">
+        <p className="text-sm text-gray-500">Checking your session…</p>
+      </main>
+    );
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-10">
