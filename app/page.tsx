@@ -115,6 +115,7 @@ export default function Home() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [accountDestination, setAccountDestination] = useState("/login");
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [staffRole, setStaffRole] = useState<"admin" | "agent" | null>(null);
 
   // Load Theme Preference (the DOM class is the source of truth; the toggle
   // re-reads it via useSyncExternalStore, so this effect only applies it once).
@@ -157,16 +158,46 @@ export default function Home() {
         return;
       }
 
-      const response = await fetch("/api/notifications?unread=1&limit=1", {
-        headers: { Authorization: `Bearer ${session.access_token}` },
+      const authHeader = { Authorization: `Bearer ${session.access_token}` };
+
+      const [notificationsResponse, adminResponse] = await Promise.all([
+        fetch("/api/notifications?unread=1&limit=1", {
+          headers: authHeader,
+          cache: "no-store",
+        }),
+        fetch("/api/admin/session", {
+          headers: authHeader,
+          cache: "no-store",
+        }),
+      ]);
+
+      const notificationsPayload = (await notificationsResponse
+        .json()
+        .catch(() => null)) as { unread?: number } | null;
+
+      setUnreadNotifications(Number(notificationsPayload?.unread ?? 0));
+
+      const adminPayload = (await adminResponse.json().catch(() => null)) as
+        | { isAdmin?: boolean }
+        | null;
+
+      if (adminPayload?.isAdmin) {
+        setStaffRole("admin");
+        return;
+      }
+
+      const agentResponse = await fetch("/api/agent/session", {
+        headers: authHeader,
         cache: "no-store",
       });
 
-      const payload = (await response.json().catch(() => null)) as
-        | { unread?: number }
+      const agentPayload = (await agentResponse.json().catch(() => null)) as
+        | { isAgent?: boolean }
         | null;
 
-      setUnreadNotifications(Number(payload?.unread ?? 0));
+      if (agentPayload?.isAgent) {
+        setStaffRole("agent");
+      }
     }
 
     void loadAccountDestination();
@@ -293,6 +324,27 @@ export default function Home() {
             >
               Become a Vendor
             </Link>
+            {staffRole && (
+              <Link
+                href={staffRole === "admin" ? "/admin" : "/agent"}
+                className="inline-flex items-center gap-1.5 rounded-full bg-green-700 px-3.5 py-1.5 text-white font-bold hover:bg-green-800 transition"
+              >
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                  />
+                </svg>
+                {staffRole === "admin" ? "Admin" : "Agent"}
+              </Link>
+            )}
           </nav>
 
           {/* Actions & Utilities */}
