@@ -25,3 +25,55 @@ body {
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
+
+input,
+textarea,
+select {
+  opacity: 1;
+  color: #111827;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #6b7280;
+  opacity: 1;
+}
+
+select:disabled,
+input:disabled,
+textarea:disabled,
+input[disabled],
+textarea[disabled],
+select[disabled] {
+  opacity: 1;
+  color: #6b7280;
+  -webkit-text-fill-color: #6b7280;
+}
+
+option {
+  color: #111827;
+  background-color: #ffffff;
+}
+
+.dark input,
+.dark textarea,
+.dark select {
+  color: #f3f4f6;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #9ca3af;
+}
+
+.dark select:disabled,
+.dark input:disabled,
+.dark textarea:disabled {
+  color: #6b7280;
+  -webkit-text-fill-color: #9ca3af;
+}
+
+.dark option {
+  color: #f3f4f6;
+  background: #0b0f19;
+}
