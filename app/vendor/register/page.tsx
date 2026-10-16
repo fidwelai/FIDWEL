@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { NIGERIAN_STATES } from "@/lib/nigeria";
 
 const REF_STORAGE_KEY = "fidwel_vendor_ref";
 const UUID_PATTERN =
@@ -46,7 +47,7 @@ export default function VendorRegisterPage() {
 
   function updateField(
     event: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) {
     setForm({
@@ -190,14 +191,22 @@ export default function VendorRegisterPage() {
                 <label className="mb-2 block font-medium">
                   State *
                 </label>
-                <input
+                <select
                   name="state"
                   value={form.state}
                   onChange={updateField}
                   className={inputClass}
-                  placeholder="e.g. Bayelsa"
                   required
-                />
+                >
+                  <option value="" disabled>
+                    Select a state
+                  </option>
+                  {NIGERIAN_STATES.map((state) => (
+                    <option key={state} value={state}>
+                      {state}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>

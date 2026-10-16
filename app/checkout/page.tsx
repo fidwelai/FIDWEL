@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { useCart } from "@/lib/cart";
 import { computeDeliveryFee, formatNaira } from "@/lib/orders";
 import { loadPaystack, makeOrderReference } from "@/lib/paystack";
+import { NIGERIAN_STATES } from "@/lib/nigeria";
 
 type CheckoutForm = {
   contact_name: string;
@@ -72,7 +73,9 @@ export default function CheckoutPage() {
   }, [router]);
 
   function updateField(
-    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    event: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) {
     setForm((current) => ({
       ...current,
@@ -243,14 +246,22 @@ export default function CheckoutPage() {
                   <div className="grid gap-5 sm:grid-cols-2">
                     <div>
                       <label className="mb-2 block font-medium">State *</label>
-                      <input
+                      <select
                         name="state"
                         value={form.state}
                         onChange={updateField}
                         className={inputClass}
-                        placeholder="e.g. Bayelsa"
                         required
-                      />
+                      >
+                        <option value="" disabled>
+                          Select a state
+                        </option>
+                        {NIGERIAN_STATES.map((state) => (
+                          <option key={state} value={state}>
+                            {state}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="mb-2 block font-medium">LGA</label>

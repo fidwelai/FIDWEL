@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { resolveAccountDestination } from "@/lib/account";
 import { useCart } from "@/lib/cart";
+import { NIGERIAN_STATES } from "@/lib/nigeria";
 
 const THEME_EVENT = "fidwel-theme-change";
 
@@ -92,7 +93,7 @@ const DEFAULT_FEATURED: Product[] = [
 
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedLocation, setSelectedLocation] = useState("Lagos, Nigeria");
+  const [selectedLocation, setSelectedLocation] = useState("Lagos");
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>(DEFAULT_FEATURED);
   const {
@@ -1013,16 +1014,7 @@ export default function Home() {
               </button>
             </div>
             <div className="mt-4 space-y-2 max-h-[60vh] overflow-y-auto">
-              {[
-                "Lagos, Nigeria",
-                "Abuja (FCT), Nigeria",
-                "Ibadan, Oyo State",
-                "Port Harcourt, Rivers",
-                "Kano, Kano State",
-                "Enugu, Enugu State",
-                "Benin City, Edo State",
-                "Kaduna, Kaduna State",
-              ].map((loc) => (
+              {NIGERIAN_STATES.map((loc) => (
                 <button
                   key={loc}
                   onClick={() => {
