@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { useCart } from "@/lib/cart";
 import { computeDeliveryFee, formatNaira } from "@/lib/orders";
 import { loadPaystack, makeOrderReference } from "@/lib/paystack";
-import { NIGERIAN_STATES } from "@/lib/nigeria";
+import { NIGERIAN_STATES, getLgas } from "@/lib/nigeria";
 
 type CheckoutForm = {
   contact_name: string;
@@ -80,6 +80,16 @@ export default function CheckoutPage() {
     setForm((current) => ({
       ...current,
       [event.target.name]: event.target.value,
+    }));
+  }
+
+  function handleStateChange(
+    event: React.ChangeEvent<HTMLSelectElement>
+  ) {
+    setForm((current) => ({
+      ...current,
+      state: event.target.value,
+      lga: "",
     }));
   }
 
@@ -249,7 +259,7 @@ export default function CheckoutPage() {
                       <select
                         name="state"
                         value={form.state}
-                        onChange={updateField}
+                        onChange={handleStateChange}
                         className={inputClass}
                         required
                       >
@@ -265,13 +275,24 @@ export default function CheckoutPage() {
                     </div>
                     <div>
                       <label className="mb-2 block font-medium">LGA</label>
-                      <input
+                      <select
                         name="lga"
                         value={form.lga}
                         onChange={updateField}
                         className={inputClass}
-                        placeholder="Local government area"
-                      />
+                        disabled={!form.state}
+                      >
+                        <option value="">
+                          {form.state
+                            ? "Select a local government area"
+                            : "Select a state first"}
+                        </option>
+                        {getLgas(form.state).map((lga) => (
+                          <option key={lga} value={lga}>
+                            {lga}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 

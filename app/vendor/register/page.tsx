@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { NIGERIAN_STATES } from "@/lib/nigeria";
+import { NIGERIAN_STATES, getLgas } from "@/lib/nigeria";
 
 const REF_STORAGE_KEY = "fidwel_vendor_ref";
 const UUID_PATTERN =
@@ -53,6 +53,16 @@ export default function VendorRegisterPage() {
     setForm({
       ...form,
       [event.target.name]: event.target.value,
+    });
+  }
+
+  function handleStateChange(
+    event: React.ChangeEvent<HTMLSelectElement>
+  ) {
+    setForm({
+      ...form,
+      state: event.target.value,
+      lga: "",
     });
   }
 
@@ -194,7 +204,7 @@ export default function VendorRegisterPage() {
                 <select
                   name="state"
                   value={form.state}
-                  onChange={updateField}
+                  onChange={handleStateChange}
                   className={inputClass}
                   required
                 >
@@ -213,14 +223,25 @@ export default function VendorRegisterPage() {
                 <label className="mb-2 block font-medium">
                   LGA *
                 </label>
-                <input
+                <select
                   name="lga"
                   value={form.lga}
                   onChange={updateField}
                   className={inputClass}
-                  placeholder="Local government area"
+                  disabled={!form.state}
                   required
-                />
+                >
+                  <option value="" disabled>
+                    {form.state
+                      ? "Select a local government area"
+                      : "Select a state first"}
+                  </option>
+                  {getLgas(form.state).map((lga) => (
+                    <option key={lga} value={lga}>
+                      {lga}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 

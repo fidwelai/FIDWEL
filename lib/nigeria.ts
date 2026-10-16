@@ -39,3 +39,11 @@ export const NIGERIAN_STATES = [
 ] as const;
 
 export type NigerianState = (typeof NIGERIAN_STATES)[number];
+
+import nigerianLgas from "@/lib/nigeria-lgas.json";
+
+export const NIGERIAN_LGAS = nigerianLgas as Record<string, string[]>;
+
+export function getLgas(state: string): string[] {
+  return NIGERIAN_LGAS[state] ?? [];
+}
