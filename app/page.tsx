@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { resolveAccountDestination } from "@/lib/account";
 import { useCart } from "@/lib/cart";
+import VerifiedBadge from "@/components/VerifiedBadge";
 import { NIGERIAN_STATES } from "@/lib/nigeria";
 
 const THEME_EVENT = "fidwel-theme-change";
@@ -34,6 +35,11 @@ type Product = {
   unit: string;
   image_url: string | null;
   location?: string;
+  vendor_id?: string;
+  vendor_profiles?: {
+    business_name?: string | null;
+    verified?: boolean | null;
+  } | null;
 };
 
 type CategoryItem = {
@@ -248,18 +254,23 @@ export default function Home() {
       try {
         const { data: prods } = await supabase
           .from("products")
-          .select("id, name, price, unit, image_url")
+          .select(
+            "id, name, price, unit, image_url, vendor_id, vendor_profiles(business_name, verified)"
+          )
           .eq("is_available", true)
           .eq("approval_status", "approved")
           .limit(8);
 
-        if (prods && prods.length > 0) {
-          const normalized = prods.map((p) => ({
-            ...p,
-            unit: normalizeUnit(p.name, p.unit),
-          }));
-          setFeaturedProducts(normalized);
-        }
+      if (prods && prods.length > 0) {
+        const normalized = prods.map((p) => ({
+          ...p,
+          unit: normalizeUnit(p.name, p.unit),
+          vendor_profiles: Array.isArray(p.vendor_profiles)
+            ? p.vendor_profiles[0] || null
+            : p.vendor_profiles || null,
+        }));
+        setFeaturedProducts(normalized);
+      }
       } catch {
         // Fallback to default
       }
@@ -646,7 +657,7 @@ export default function Home() {
                     : "bg-white border-gray-100 hover:border-green-300 hover:bg-green-50/50"
                 }`}
               >
-                <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center p-2 transition ${
+                <div className={`w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center p-2 transition ${
                   isDarkMode ? "bg-slate-800 group-hover:bg-slate-700" : "bg-gray-50 group-hover:bg-green-100/50"
                 }`}>
                   <CategoryIcon type={cat.iconType} />
@@ -689,7 +700,7 @@ export default function Home() {
             {featuredProducts.map((item) => (
               <div
                 key={item.id}
-                className={`group rounded-2xl sm:rounded-3xl overflow-hidden border shadow-xs hover:shadow-xl transition duration-200 flex flex-col ${
+                className={`group rounded-2xl sm:rounded-3xl overflow-hidden border shadow-xs hover:shadow-xl hover:-translate-y-1 transition duration-200 flex flex-col ${
                   isDarkMode
                     ? "bg-slate-900 border-slate-800 hover:border-slate-700"
                     : "bg-white border-gray-100 hover:border-gray-200"
@@ -712,6 +723,14 @@ export default function Home() {
                     }`}>
                       {item.name}
                     </h3>
+                    {(item.vendor_profiles?.business_name || item.vendor_profiles?.verified) && (
+                      <div className="mt-1 flex items-center gap-1.5 text-[11px] sm:text-xs min-w-0">
+                        <span className={`truncate ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
+                          {item.vendor_profiles?.business_name || ""}
+                        </span>
+                        {item.vendor_profiles?.verified && <VerifiedBadge />}
+                      </div>
+                    )}
                     <p className="mt-1 text-sm sm:text-lg font-extrabold text-green-600 dark:text-green-400">
                       ₦{Number(item.price).toLocaleString("en-NG")}
                       <span className={`text-[11px] sm:text-xs font-normal ml-1 ${
