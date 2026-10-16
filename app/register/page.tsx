@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { resolveImageContentType } from "@/lib/image-upload";
 
 export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
@@ -21,6 +22,10 @@ export default function RegisterPage() {
   function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
+    if (!resolveImageContentType(file)) {
+      setMessage("Please choose a JPG, PNG or WebP image.");
+      return;
+    }
     if (file.size > 2 * 1024 * 1024) {
       setMessage("Profile picture must be smaller than 2 MB.");
       return;
@@ -52,11 +57,17 @@ export default function RegisterPage() {
     // Upload avatar if provided
     let avatarUrl: string | null = null;
     if (avatarFile) {
-      const ext = avatarFile.name.split(".").pop();
+      const contentType = resolveImageContentType(avatarFile);
+      if (!contentType) {
+        setLoading(false);
+        setMessage("Please choose a JPG, PNG or WebP image.");
+        return;
+      }
+      const ext = contentType.split("/")[1];
       const path = `public/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(path, avatarFile, { upsert: false });
+        .upload(path, avatarFile, { upsert: false, contentType });
       if (uploadError) {
         setLoading(false);
         setMessage("Failed to upload profile picture. Please try again.");

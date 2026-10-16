@@ -1,13 +1,8 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { resolveImageContentType } from "@/lib/image-upload";
 
 const BUCKET = "product-images";
 const MAX_BYTES = 5 * 1024 * 1024;
-
-const ALLOWED_TYPES: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-};
 
 export async function POST(request: Request) {
   const admin = supabaseAdmin;
@@ -69,9 +64,9 @@ export async function POST(request: Request) {
   }
 
   const file = entry;
-  const extension = ALLOWED_TYPES[file.type];
+  const contentType = resolveImageContentType(file);
 
-  if (!extension) {
+  if (!contentType) {
     return Response.json(
       { error: "Only JPG, PNG or WebP images are allowed." },
       { status: 415 }
@@ -85,11 +80,12 @@ export async function POST(request: Request) {
     );
   }
 
+  const extension = contentType.split("/")[1];
   const path = `${vendor.id}/${crypto.randomUUID()}.${extension}`;
 
   const { error: uploadError } = await admin.storage
     .from(BUCKET)
-    .upload(path, file, { contentType: file.type, upsert: false });
+    .upload(path, file, { contentType, upsert: false });
 
   if (uploadError) {
     return Response.json(
