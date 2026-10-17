@@ -109,7 +109,9 @@ function ProductDetailContent() {
   }, [productId]);
 
   useEffect(() => {
-    if (!product?.vendor_id || product.vendor_id === "mock-vendor") {
+    const vendorId = product?.vendor_id;
+
+    if (!vendorId || vendorId === "mock-vendor") {
       setVendor(null);
       setVendorProducts([]);
       return;
@@ -118,7 +120,7 @@ function ProductDetailContent() {
     let active = true;
     async function loadVendor() {
       try {
-        const response = await fetch(`/api/public/vendors/${product.vendor_id}`);
+        const response = await fetch(`/api/public/vendors/${vendorId}`);
         if (!response.ok) {
           if (active) {
             setVendor(null);
