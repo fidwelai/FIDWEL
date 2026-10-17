@@ -70,7 +70,7 @@ function ProductDetailContent() {
             name: mock.name,
             description: mock.description,
             price: mock.price,
-            unit: normalizeUnit(mock.name, "unit"),
+            unit: mock.unit,
             quantity_available: 50,
             image_url: mock.image,
             category_id: null,
