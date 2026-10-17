@@ -185,7 +185,7 @@ function ProductDetailContent() {
 
   function handleBuyNow() {
     addCurrentToCart();
-    router.push("/checkout");
+    router.push("/cart");
   }
 
   return (
@@ -324,7 +324,7 @@ function ProductDetailContent() {
                   onClick={handleBuyNow}
                   className="flex-1 rounded-xl border border-green-700 px-4 py-3 font-semibold text-green-700 hover:bg-green-50"
                 >
-                  Buy Now
+                  Add & View Cart
                 </button>
               </div>
 
