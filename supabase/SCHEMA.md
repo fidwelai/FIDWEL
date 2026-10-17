@@ -153,6 +153,28 @@ order history.
 what will let vendors read the orders that contain their listings once vendor
 order-management policies are added.
 
+### `public.delivery_agent_profiles`
+
+One service-area profile per FIDWEL delivery agent. Agents save their state and LGA in the agent portal; an optional town narrows matching. The server uses the service role for writes and only returns agent contact details to the customer who owns the assigned order.
+
+| Column | Type | Meaning |
+|--------|------|---------|
+| `id` | `uuid` | Profile primary key |
+| `user_id` | `uuid` | Delivery agent's `auth.users.id`, unique |
+| `state` | `text` | Required delivery state |
+| `lga` | `text` | Required local government area |
+| `town` | `text` | Optional narrower match |
+| `phone` | `text` | Optional customer-facing delivery phone |
+| `is_active` | `boolean` | Whether the agent can receive new assignments |
+
+### Delivery fields on `public.orders`
+
+- `delivery_agent_id`: nullable `auth.users.id` for the assigned FIDWEL agent.
+- `delivery_status`: `pending`, `assigned`, `picked_up`, `in_transit`, `delivered`, or `failed`.
+- Once an order payment changes to `paid`, a database trigger matches an active agent by case-insensitive state + LGA and prefers an exact town match.
+- If no agent matches, the order remains `pending` until an agent activates a matching service area.
+- Vendor item fulfilment remains separate from delivery status; agents cannot pick up an order until all items are marked shipped.
+
 ### `public.notifications`
 
 In-app notification inbox for customers and vendors. Created by
