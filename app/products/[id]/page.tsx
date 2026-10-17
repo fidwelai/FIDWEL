@@ -5,7 +5,25 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useCart } from "@/lib/cart";
-import { findMockProduct } from "@/lib/mock-products";
+
+type PublicVendor = {
+  id: string;
+  business_name: string;
+  description: string | null;
+  state: string | null;
+  lga: string | null;
+  town: string | null;
+  verified: boolean;
+  since: string;
+};
+
+type VendorProduct = {
+  id: number;
+  name: string;
+  price: number;
+  unit: string;
+  image_url: string | null;
+};
 
 type Product = {
   id: number;
@@ -35,6 +53,8 @@ function ProductDetailContent() {
   const router = useRouter();
   const [product, setProduct] = useState<Product | null>(null);
   const [categoryName, setCategoryName] = useState<string | null>(null);
+  const [vendor, setVendor] = useState<PublicVendor | null>(null);
+  const [vendorProducts, setVendorProducts] = useState<VendorProduct[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -62,26 +82,7 @@ function ProductDetailContent() {
         .maybeSingle();
 
       if (queryError || !data) {
-        const mock = findMockProduct(productId);
-
-        if (mock) {
-          setProduct({
-            id: Number(mock.id),
-            name: mock.name,
-            description: mock.description,
-            price: mock.price,
-            unit: mock.unit,
-            quantity_available: 50,
-            image_url: mock.image,
-            category_id: null,
-            vendor_id: "mock-vendor",
-          });
-          setCategoryName(mock.category);
-          setLoading(false);
-          return;
-        }
-
-        setError("This product is no longer available.");
+        setError("This product is no longer available. Please browse current listings.");
         setProduct(null);
         setLoading(false);
         return;
@@ -106,6 +107,43 @@ function ProductDetailContent() {
 
     loadProduct();
   }, [productId]);
+
+  useEffect(() => {
+    const vendorId = product?.vendor_id;
+
+    if (!vendorId || vendorId === "mock-vendor") {
+      setVendor(null);
+      setVendorProducts([]);
+      return;
+    }
+
+    let active = true;
+    async function loadVendor() {
+      try {
+        const response = await fetch(`/api/public/vendors/${vendorId}`);
+        if (!response.ok) {
+          if (active) {
+            setVendor(null);
+            setVendorProducts([]);
+          }
+          return;
+        }
+        const payload = await response.json() as { vendor?: PublicVendor; products?: VendorProduct[] };
+        if (active) {
+          setVendor(payload.vendor ?? null);
+          setVendorProducts(payload.products ?? []);
+        }
+      } catch {
+        if (active) {
+          setVendor(null);
+          setVendorProducts([]);
+        }
+      }
+    }
+
+    void loadVendor();
+    return () => { active = false; };
+  }, [product?.vendor_id]);
 
   async function handleShare() {
     if (!product) {
@@ -149,7 +187,7 @@ function ProductDetailContent() {
 
   function handleBuyNow() {
     addCurrentToCart();
-    router.push("/checkout");
+    router.push("/cart");
   }
 
   return (
@@ -288,7 +326,7 @@ function ProductDetailContent() {
                   onClick={handleBuyNow}
                   className="flex-1 rounded-xl border border-green-700 px-4 py-3 font-semibold text-green-700 hover:bg-green-50"
                 >
-                  Buy Now
+                  Add & View Cart
                 </button>
               </div>
 
@@ -306,6 +344,43 @@ function ProductDetailContent() {
               </p>
             </div>
           </div>
+        )}
+
+        {!loading && !error && product && vendor && (
+          <section className="mt-8 rounded-3xl border bg-white p-6 shadow-sm sm:p-8">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-green-700">Seller information</p>
+                <h2 className="mt-2 text-xl font-bold text-gray-900">{vendor.business_name}</h2>
+                <p className="mt-2 flex items-center gap-2 text-sm font-semibold text-green-700">
+                  <span aria-hidden="true">✓</span> Verified and active FIDWEL vendor
+                </p>
+                <p className="mt-2 text-sm text-gray-600">
+                  {[vendor.town, vendor.lga, vendor.state].filter(Boolean).join(", ") || "Location not provided"}
+                </p>
+              </div>
+              {vendor.since && (
+                <p className="text-xs text-gray-500">On FIDWEL since {new Date(vendor.since).toLocaleDateString("en-NG", { month: "short", year: "numeric" })}</p>
+              )}
+            </div>
+            {vendor.description && <p className="mt-4 max-w-3xl text-sm leading-6 text-gray-600">{vendor.description}</p>}
+            {vendorProducts.length > 0 && (
+              <div className="mt-6">
+                <h3 className="font-bold text-gray-900">More from this vendor</h3>
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {vendorProducts.filter((item) => Number(item.id) !== product.id).slice(0, 3).map((item) => (
+                    <Link key={item.id} href={`/products/${item.id}`} className="overflow-hidden rounded-xl border hover:border-green-600">
+                      {item.image_url ? <img src={item.image_url} alt={item.name} className="h-24 w-full object-cover" /> : <div className="flex h-24 items-center justify-center bg-green-50 text-3xl">🌱</div>}
+                      <div className="p-3">
+                        <p className="line-clamp-2 text-sm font-semibold">{item.name}</p>
+                        <p className="mt-1 text-sm font-bold text-green-700">₦{Number(item.price).toLocaleString("en-NG")} / {item.unit}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
         )}
 
         {!loading && !error && product && <ProductReviews productId={product.id} />}
