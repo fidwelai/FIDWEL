@@ -25,6 +25,11 @@ type OrderItem = {
   fulfillment_status: string;
 };
 
+type DeliveryTracking = {
+  deliveryStatus: string;
+  agent: { name: string; phone: string | null; area: string } | null;
+};
+
 type Order = {
   id: string;
   status: string;
@@ -54,6 +59,7 @@ function OrderDetailContent() {
   const paymentProcessing = searchParams.get("payment") === "processing";
 
   const [order, setOrder] = useState<Order | null>(null);
+  const [deliveryTracking, setDeliveryTracking] = useState<DeliveryTracking | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [paying, setPaying] = useState(false);
@@ -102,7 +108,21 @@ function OrderDetailContent() {
       }
 
       setOrder(data as Order);
-      setLoading(false);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const trackingResponse = await fetch(`/api/orders/${orderId}/delivery`, {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          const trackingPayload = await trackingResponse.json().catch(() => null) as DeliveryTracking | null;
+          if (active && trackingResponse.ok && trackingPayload) {
+            setDeliveryTracking(trackingPayload);
+          }
+        }
+      } catch {
+        // The order details remain available even if delivery tracking is temporarily unavailable.
+      }
+      if (active) setLoading(false);
     }
 
     load();
@@ -289,6 +309,48 @@ function OrderDetailContent() {
           </ol>
         </div>
       )}
+
+      <div className="rounded-2xl border bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold">FIDWEL delivery agent</h2>
+            <p className="mt-1 text-sm text-gray-600">Your order is matched to a delivery agent by your delivery location after payment is confirmed.</p>
+          </div>
+          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+            deliveryTracking?.deliveryStatus === "delivered"
+              ? "border-green-200 bg-green-50 text-green-700"
+              : deliveryTracking?.deliveryStatus === "pending"
+                ? "border-amber-200 bg-amber-50 text-amber-800"
+                : "border-blue-200 bg-blue-50 text-blue-700"
+          }`}>
+            {deliveryTracking?.deliveryStatus ? deliveryTracking.deliveryStatus.replaceAll("_", " ") : "Checking assignment"}
+          </span>
+        </div>
+        {order.payment_status !== "paid" ? (
+          <p className="mt-4 text-sm text-gray-600">An agent will be assigned once payment is confirmed.</p>
+        ) : deliveryTracking?.agent ? (
+          <div className="mt-4 rounded-xl bg-gray-50 p-4 text-sm">
+            <p className="font-semibold text-gray-900">{deliveryTracking.agent.name}</p>
+            {deliveryTracking.agent.phone && <p className="mt-1">Phone: <a className="font-semibold text-green-700 underline" href={`tel:${deliveryTracking.agent.phone}`}>{deliveryTracking.agent.phone}</a></p>}
+            {deliveryTracking.agent.area && <p className="mt-1 text-gray-600">Service area: {deliveryTracking.agent.area}</p>}
+          </div>
+        ) : (
+          <p className="mt-4 text-sm text-gray-600">We have not found an active delivery agent for this exact state and LGA yet. FIDWEL will keep the order waiting for a location match.</p>
+        )}
+        <ol className="mt-4 grid gap-2 sm:grid-cols-4">
+          {[
+            ["assigned", "Agent assigned"],
+            ["picked_up", "Picked up"],
+            ["in_transit", "On the way"],
+            ["delivered", "Delivered"],
+          ].map(([key, label], index) => {
+            const stages = ["assigned", "picked_up", "in_transit", "delivered"];
+            const current = stages.indexOf(deliveryTracking?.deliveryStatus ?? "");
+            const reached = current >= index;
+            return <li key={key} className={`rounded-lg px-3 py-2 text-sm ${reached ? "bg-green-50 font-semibold text-green-800" : "bg-gray-50 text-gray-400"}`}>{label}</li>;
+          })}
+        </ol>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">

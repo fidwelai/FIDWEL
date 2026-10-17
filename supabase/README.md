@@ -14,9 +14,10 @@ acquisition agents), `202610150005_product_stock.sql` (stock reservation),
 `202610150006_notifications.sql` (in-app notification inbox),
 `202610150007_partial_cancel_restock.sql` (per-item cancel restock),
 `202610150008_reviews.sql` (product reviews and ratings),
-`202610150009_product_images.sql` (the `product-images` Storage bucket), and
+`202610150009_product_images.sql` (the `product-images` Storage bucket),
 `202610150010_avatars.sql` (the `avatars` Storage bucket and its pre-auth upload
-policy).
+policy), and `202610170001_location_based_delivery_agents.sql` (location-based
+delivery agent profiles, assignment, and tracking).
 
 Checkout payments run through server route handlers that use the
 `SUPABASE_SECRET_KEY` (service role) and Paystack keys. Admin and agent access
