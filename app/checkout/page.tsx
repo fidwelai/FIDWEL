@@ -113,15 +113,37 @@ export default function CheckoutPage() {
       callback: async (response) => {
         setStatus("Confirming your payment...");
         try {
-          await fetch("/api/paystack/verify", {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+
+          if (!session) {
+            router.push(`/orders/${orderId}?payment=processing`);
+            return;
+          }
+
+          const verifyResponse = await fetch("/api/paystack/verify", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ reference: response.reference || reference, orderId }),
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ reference: response.reference || reference }),
           });
+          const verifyPayload = (await verifyResponse.json().catch(() => null)) as
+            | { ok?: boolean }
+            | null;
+
+          if (!verifyResponse.ok || !verifyPayload?.ok) {
+            router.push(`/orders/${orderId}?payment=processing`);
+            return;
+          }
+
+          router.push(`/orders/${orderId}`);
         } catch {
-          // The webhook will reconcile the payment if this call fails.
+          // The signed Paystack webhook can still reconcile the payment.
+          router.push(`/orders/${orderId}?payment=processing`);
         }
-        router.push(`/orders/${orderId}`);
       },
       onClose: () => {
         router.push(`/orders/${orderId}`);

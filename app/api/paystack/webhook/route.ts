@@ -130,22 +130,41 @@ export async function POST(request: Request) {
 
   const expectedKobo = Math.round(Number(order.total) * 100);
 
-  if (paidCurrency && paidCurrency !== String(order.currency).toUpperCase()) {
+  // Order references are created with the order ID as a prefix. This prevents
+  // a valid charge for another order from being attached through metadata alone.
+  if (!reference || !reference.startsWith(`${order.id}-`)) {
     return Response.json({ received: true });
   }
 
-  if (paidKobo !== expectedKobo) {
+  if (paidCurrency !== String(order.currency).toUpperCase()) {
     return Response.json({ received: true });
   }
 
-  await supabaseAdmin
+  if (!Number.isFinite(paidKobo) || paidKobo !== expectedKobo) {
+    return Response.json({ received: true });
+  }
+
+  const { data: updatedOrder, error: updateError } = await supabaseAdmin
     .from("orders")
     .update({
       payment_status: "paid",
       status: "paid",
       payment_reference: reference,
     })
-    .eq("id", order.id);
+    .eq("id", order.id)
+    .eq("payment_status", "unpaid")
+    .select("id")
+    .maybeSingle();
+
+  if (updateError) {
+    return Response.json({ error: "Could not update order payment status." }, { status: 500 });
+  }
+
+  // The verify endpoint or a duplicate webhook may have completed this order.
+  // Only the request that changes unpaid -> paid sends the notification.
+  if (!updatedOrder) {
+    return Response.json({ received: true });
+  }
 
   if (order.customer_id) {
     await notifyOrderPaid({

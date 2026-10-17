@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import {
   ORDER_TIMELINE,
@@ -50,6 +50,8 @@ function OrderDetailContent() {
   const params = useParams<{ id: string }>();
   const orderId = params?.id;
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const paymentProcessing = searchParams.get("payment") === "processing";
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -147,15 +149,28 @@ function OrderDetailContent() {
       callback: async (response) => {
         setStatus("Confirming your payment...");
         try {
-          await fetch("/api/paystack/verify", {
+          const verifyResponse = await fetch("/api/paystack/verify", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ reference: response.reference || reference, orderId: order.id }),
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ reference: response.reference || reference }),
           });
+          const verifyPayload = (await verifyResponse.json().catch(() => null)) as
+            | { ok?: boolean }
+            | null;
+
+          if (!verifyResponse.ok || !verifyPayload?.ok) {
+            router.push(`/orders/${order.id}?payment=processing`);
+            return;
+          }
+
+          window.location.href = `/orders/${order.id}`;
         } catch {
-          // The webhook will reconcile the payment if this call fails.
+          // The signed Paystack webhook can still reconcile the payment.
+          router.push(`/orders/${order.id}?payment=processing`);
         }
-        window.location.reload();
       },
       onClose: () => {
         setPaying(false);
@@ -207,7 +222,24 @@ function OrderDetailContent() {
         </span>
       </div>
 
-      {order.payment_status === "unpaid" && (
+      {paymentProcessing && order.payment_status !== "paid" && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
+          <h2 className="font-bold text-amber-900">Payment confirmation in progress</h2>
+          <p className="mt-1 text-sm text-amber-800">
+            Paystack returned you to FIDWEL, but confirmation has not completed yet. Do not pay again while this message is shown.
+          </p>
+          <button
+            onClick={() => {
+              window.location.href = `/orders/${order.id}`;
+            }}
+            className="mt-4 rounded-xl border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-900"
+          >
+            Refresh payment status
+          </button>
+        </div>
+      )}
+
+      {order.payment_status === "unpaid" && !paymentProcessing && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
           <h2 className="font-bold text-amber-900">Payment due</h2>
           <p className="mt-1 text-sm text-amber-800">
