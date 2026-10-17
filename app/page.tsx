@@ -778,7 +778,11 @@ export default function Home() {
                     : "bg-white border-gray-100 hover:border-gray-200"
                 }`}
               >
-                <div className="h-36 sm:h-48 w-full overflow-hidden bg-gray-100 dark:bg-slate-800 relative">
+                <Link
+                  href={`/product/${item.id}`}
+                  className="block h-36 sm:h-48 w-full overflow-hidden bg-gray-100 dark:bg-slate-800 relative"
+                  aria-label={`View ${item.name}`}
+                >
                   <img
                     src={item.image_url || "/images/plantain.jpg"}
                     alt={item.name}
@@ -787,9 +791,9 @@ export default function Home() {
                   <span className="absolute top-2.5 right-2.5 bg-emerald-600 text-white text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full shadow-xs">
                     In Stock
                   </span>
-                </div>
+                </Link>
                 <div className="p-3.5 sm:p-5 flex flex-col justify-between flex-1">
-                  <div>
+                  <Link href={`/product/${item.id}`} className="block">
                     <h3 className={`text-xs sm:text-base font-bold line-clamp-1 group-hover:text-green-600 transition ${
                       isDarkMode ? "text-white" : "text-gray-900"
                     }`}>
@@ -819,7 +823,7 @@ export default function Home() {
                         / {item.unit}
                       </span>
                     </p>
-                  </div>
+                  </Link>
 
                   <div className="mt-4 flex gap-2">
                     <button
@@ -832,7 +836,7 @@ export default function Home() {
                       <span>Add to Cart</span>
                     </button>
                     <button
-                      onClick={() => router.push(`/products?q=${encodeURIComponent(item.name)}`)}
+                      onClick={() => router.push(`/product/${item.id}`)}
                       className={`p-2 rounded-xl border transition flex items-center justify-center ${
                         isDarkMode
                           ? "border-slate-700 text-slate-300 hover:bg-slate-800"
