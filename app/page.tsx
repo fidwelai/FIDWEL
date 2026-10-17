@@ -51,7 +51,7 @@ type CategoryItem = {
   ink: string;
 };
 
-const DEFAULT_CATEGORIES: CategoryItem[] = [
+const categories: CategoryItem[] = [
   { name: "Plantain", iconType: "plantain", emoji: "🍌", bg: "#FEF3C7", ink: "#B45309" },
   { name: "Fish", iconType: "fish", emoji: "🐟", bg: "#DBEAFE", ink: "#1D4ED8" },
   { name: "Yam", iconType: "yam", emoji: "🥔", bg: "#EFDCC0", ink: "#8B5E34" },
@@ -70,7 +70,7 @@ function normalizeUnit(name: string, unit: string): string {
   return unit;
 }
 
-const DEFAULT_FEATURED: Product[] = [
+const products: Product[] = [
   {
     id: 101,
     name: "Fresh Plantain Bunch",
@@ -149,7 +149,7 @@ export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("Lagos");
   const [showLocationModal, setShowLocationModal] = useState(false);
-  const [featuredProducts, setFeaturedProducts] = useState<Product[]>(DEFAULT_FEATURED);
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>(products);
   const {
     items: cart,
     count: totalCartCount,
@@ -171,6 +171,11 @@ export default function Home() {
   const [accountDestination, setAccountDestination] = useState("/login");
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [staffRole, setStaffRole] = useState<"admin" | "agent" | null>(null);
+
+  const locationLabel =
+    selectedLocation === "Federal Capital Territory (Abuja)"
+      ? "Abuja"
+      : selectedLocation.split(",")[0];
 
   // Load Theme Preference (the DOM class is the source of truth; the toggle
   // re-reads it via useSyncExternalStore, so this effect only applies it once).
@@ -368,7 +373,7 @@ export default function Home() {
           ? "bg-slate-900/95 border-slate-800 text-white backdrop-blur-md"
           : "bg-white/95 border-gray-100 text-gray-900 backdrop-blur-md shadow-xs"
       }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           {/* Logo with Green Leaf */}
           <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
             <div className="w-8 h-8 rounded-xl bg-green-700 flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition">
@@ -435,10 +440,10 @@ export default function Home() {
 
           {/* Actions & Utilities */}
           <div className="flex items-center gap-2 sm:gap-3.5">
-            {/* Location selector on header */}
+            {/* Location pill — Section A: always visible */}
             <button
               onClick={() => setShowLocationModal(true)}
-              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap ${
                 isDarkMode
                   ? "bg-slate-800 hover:bg-slate-700 text-slate-200"
                   : "bg-gray-100 hover:bg-gray-200/80 text-gray-700"
@@ -447,8 +452,8 @@ export default function Home() {
               <svg className="w-3.5 h-3.5 text-emerald-500 fill-emerald-500 shrink-0" viewBox="0 0 24 24">
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
               </svg>
-              <span>{selectedLocation.split(",")[0]}</span>
-              <span className="text-gray-400 text-[10px]">▼</span>
+              <span className="truncate max-w-[120px]">{locationLabel}, Nigeria</span>
+              <span className="hidden sm:inline text-gray-400 text-[10px]">▼</span>
             </button>
 
             {/* LIGHT / DARK MODE TOGGLE */}
@@ -479,7 +484,7 @@ export default function Home() {
             {/* Quick Search */}
             <button
               onClick={() => router.push("/products")}
-              className={`p-2 rounded-full transition ${
+              className={`hidden md:flex items-center justify-center p-2 rounded-full transition ${
                 isDarkMode
                   ? "text-slate-300 hover:text-green-500 hover:bg-slate-800"
                   : "text-gray-600 hover:text-green-700 hover:bg-gray-100"
@@ -492,33 +497,31 @@ export default function Home() {
               </svg>
             </button>
 
-            {/* NOTIFICATIONS BELL */}
-            {userEmail && (
-              <Link
-                href="/notifications"
-                className={`relative p-2 rounded-full transition ${
-                  isDarkMode
-                    ? "text-slate-300 hover:text-green-500 hover:bg-slate-800"
-                    : "text-gray-700 hover:text-green-700 hover:bg-gray-100"
-                }`}
-                aria-label="Notifications"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                </svg>
-                {unreadNotifications > 0 && (
-                  <span className="absolute top-0.5 right-0.5 min-w-4 h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900">
-                    {unreadNotifications > 9 ? "9+" : unreadNotifications}
-                  </span>
-                )}
-              </Link>
-            )}
+            {/* NOTIFICATIONS BELL — Section A: always visible */}
+            <Link
+              href="/notifications"
+              className={`relative p-2 rounded-full transition ${
+                isDarkMode
+                  ? "text-slate-300 hover:text-green-500 hover:bg-slate-800"
+                  : "text-gray-700 hover:text-green-700 hover:bg-gray-100"
+              }`}
+              aria-label="Notifications"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              {unreadNotifications > 0 && (
+                <span className="absolute top-0.5 right-0.5 min-w-4 h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900">
+                  {unreadNotifications > 9 ? "9+" : unreadNotifications}
+                </span>
+              )}
+            </Link>
 
             {/* CART BUTTON WITH DRAWER TRIGGER */}
             <button
               onClick={() => setIsCartOpen(true)}
-              className={`relative p-2 rounded-full transition ${
+              className={`relative hidden md:flex items-center justify-center p-2 rounded-full transition ${
                 isDarkMode
                   ? "text-slate-300 hover:text-green-500 hover:bg-slate-800"
                   : "text-gray-700 hover:text-green-700 hover:bg-gray-100"
@@ -540,7 +543,7 @@ export default function Home() {
             {/* User Profile Avatar */}
             <Link
               href={accountDestination}
-              className={`flex items-center gap-2 p-1 pl-1.5 rounded-full transition ${
+              className={`hidden md:flex items-center gap-2 p-1 pl-1.5 rounded-full transition ${
                 isDarkMode ? "hover:bg-slate-800" : "hover:bg-gray-100"
               }`}
               aria-label="User Account"
@@ -571,7 +574,7 @@ export default function Home() {
                 type="button"
                 onClick={handleSignOut}
                 title="Sign out"
-                className={`hidden sm:flex items-center gap-1 rounded-full px-3 py-2 text-xs font-semibold transition ${
+                className={`hidden md:flex items-center gap-1 rounded-full px-3 py-2 text-xs font-semibold transition ${
                   isDarkMode
                     ? "text-slate-300 hover:bg-slate-800 hover:text-red-400"
                     : "text-gray-600 hover:bg-gray-100 hover:text-red-600"
@@ -634,7 +637,7 @@ export default function Home() {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search for product, farm, vendor..."
+                placeholder="Search for product, farm, vendor"
                 className={`w-full bg-transparent px-2 py-1 text-xs sm:text-sm outline-none font-medium ${
                   isDarkMode
                     ? "text-white placeholder-slate-400"
@@ -673,8 +676,8 @@ export default function Home() {
                 <svg className="w-3.5 h-3.5 text-emerald-500 fill-emerald-500" viewBox="0 0 24 24">
                   <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
                 </svg>
-                <span className="hidden sm:inline">{selectedLocation}</span>
-                <span className="sm:hidden truncate max-w-[85px]">{selectedLocation.split(",")[0]}</span>
+                <span className="hidden sm:inline">{locationLabel}, Nigeria</span>
+                <span className="sm:hidden truncate max-w-[85px]">{locationLabel}</span>
               </button>
 
               {/* Search Button for Desktop */}
@@ -691,7 +694,7 @@ export default function Home() {
               <svg className="w-4 h-4 fill-current text-white shrink-0" viewBox="0 0 24 24">
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
               </svg>
-              <span>{selectedLocation}</span>
+              <span>{locationLabel}, Nigeria</span>
             </div>
           </div>
         </section>
@@ -702,7 +705,7 @@ export default function Home() {
             <h2 className={`text-lg sm:text-xl font-extrabold tracking-tight ${
               isDarkMode ? "text-white" : "text-gray-900"
             }`}>
-              Agricultural Categories
+              Categories
             </h2>
             <Link
               href="/products"
@@ -713,7 +716,7 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-8 gap-3 sm:gap-4 md:gap-5">
-            {DEFAULT_CATEGORIES.map((cat) => (
+            {categories.map((cat) => (
               <button
                 key={cat.name}
                 onClick={() => handleCategoryClick(cat.name)}
@@ -760,12 +763,12 @@ export default function Home() {
               href="/products"
               className="text-xs sm:text-sm font-semibold text-green-600 hover:text-green-500 transition"
             >
-              See all products →
+              See all
             </Link>
           </div>
 
           {/* Product cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
             {featuredProducts.map((item) => (
               <div
                 key={item.id}
@@ -849,7 +852,7 @@ export default function Home() {
       </main>
 
       {/* FOOTER */}
-      <footer className={`w-full border-t py-8 px-4 sm:px-8 mt-auto text-xs sm:text-sm transition-colors ${
+      <footer className={`w-full border-t pt-8 pb-24 px-4 sm:px-8 mt-auto text-xs sm:text-sm transition-colors ${
         isDarkMode
           ? "bg-slate-950 border-slate-800 text-slate-400"
           : "bg-white border-gray-200 text-gray-500"
@@ -870,7 +873,7 @@ export default function Home() {
       </footer>
 
       {/* MOBILE BOTTOM NAVIGATION BAR */}
-      <nav className={`md:hidden fixed bottom-0 inset-x-0 border-t px-6 py-2.5 flex items-center justify-between shadow-[0_-4px_16px_rgba(0,0,0,0.08)] z-40 backdrop-blur-md transition-colors ${
+      <nav className={`fixed bottom-0 inset-x-0 mx-auto w-full md:max-w-lg border-t px-6 py-2.5 flex items-center justify-between shadow-[0_-4px_16px_rgba(0,0,0,0.08)] z-40 backdrop-blur-md transition-colors ${
         isDarkMode
           ? "bg-slate-900/95 border-slate-800 text-slate-400"
           : "bg-white/95 border-gray-200/80 text-gray-400"
