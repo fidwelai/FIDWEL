@@ -230,7 +230,6 @@ function OrderDetailContent() {
           </p>
           <button
             onClick={() => {
-              router.replace(`/orders/${order.id}`);
               window.location.href = `/orders/${order.id}`;
             }}
             className="mt-4 rounded-xl border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-900"
