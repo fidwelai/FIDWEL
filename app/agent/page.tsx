@@ -135,6 +135,7 @@ export default function AgentPortalPage() {
       | { ok?: boolean; error?: string; profile?: DeliveryProfile; assigned?: number; delivery?: { id: string; delivery_status: string } }
       | null;
     if (!response.ok) throw new Error(payload?.error ?? "The request could not be completed.");
+    if (!payload) throw new Error("The server returned an invalid response.");
     return payload;
   }
 
