@@ -2,37 +2,12 @@
 
 import Link from "next/link";
 import { useCart } from "@/lib/cart";
-
-type Product = {
-  id: number;
-  farm: string;
-  rating: number;
-  reviews: number;
-  price: string;
-  stock: string;
-  verified: boolean;
-  image: string;
-  lat: string;
-};
-
-const products: Product[] = [
-  { id: 1, farm: "FreshCatch Farms", rating: 4.8, reviews: 1134, price: "₦5,900/kg", stock: "2.1 ton", verified: true, image: "https://images.unsplash.com/photo-1544943910-4c1dc44aab44?w=200", lat: "Nearby" },
-  { id: 2, farm: "Mama T's Agro", rating: 4.6, reviews: 892, price: "₦4,800/kg", stock: "2.5 ton", verified: true, image: "https://images.unsplash.com/photo-1543528173-d4dccdbf2e8c?w=200", lat: "Nearby" },
-  { id: 3, farm: "Ocean Fresh", rating: 4.7, reviews: 1102, price: "₦5,200/kg", stock: "2.1 ton", verified: true, image: "https://images.unsplash.com/photo-1534766555764-ce878a5e3a2b?w=200", lat: "Nearby" },
-  { id: 4, farm: "Fresh Plantain Bunch", rating: 4.9, reviews: 210, price: "₦2,500/kg", stock: "50 bunches", verified: true, image: "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=200", lat: "Nearby" },
-  { id: 5, farm: "Yam Barn", rating: 4.7, reviews: 45, price: "₦1,800/kg", stock: "30 tubers", verified: true, image: "https://images.unsplash.com/photo-1596097156937-968d8e95c8e6?w=200", lat: "Nearby" },
-];
+import { MOCK_PRODUCTS, type MockProduct } from "@/lib/mock-products";
 
 const FILTERS = ["Price •", "Rating •", "Verified"];
 
-function parsePrice(price: string): { amount: number; unit: string } {
-  const amount = Number(price.replace(/[^0-9.]/g, ""));
-  const unitMatch = price.match(/\/\s*([a-zA-Z]+)/);
-
-  return {
-    amount: Number.isFinite(amount) ? amount : 0,
-    unit: unitMatch ? unitMatch[1] : "unit",
-  };
+function formatPrice(product: MockProduct): string {
+  return `₦${product.price.toLocaleString("en-NG")}/${product.unit}`;
 }
 
 export default function ProductsPage() {
@@ -40,18 +15,16 @@ export default function ProductsPage() {
 
   function handleAddToCart(
     event: React.MouseEvent<HTMLButtonElement>,
-    product: Product
+    product: MockProduct
   ) {
     event.preventDefault();
     event.stopPropagation();
 
-    const { amount, unit } = parsePrice(product.price);
-
     addItem({
-      id: product.id,
-      name: product.farm,
-      price: amount,
-      unit,
+      id: Number(product.id),
+      name: product.name,
+      price: product.price,
+      unit: product.unit,
       image_url: product.image,
     });
   }
@@ -92,7 +65,7 @@ export default function ProductsPage() {
 
         {/* PRODUCT LIST */}
         <div className="flex flex-col gap-3 px-3">
-          {products.map((product) => (
+          {MOCK_PRODUCTS.map((product) => (
             <Link
               key={product.id}
               href={`/products/${product.id}`}
@@ -100,12 +73,12 @@ export default function ProductsPage() {
             >
               <img
                 src={product.image}
-                alt={product.farm}
+                alt={product.name}
                 className="h-20 w-20 flex-shrink-0 rounded-lg object-cover"
               />
 
               <div className="flex flex-1 flex-col gap-1">
-                <h3 className="text-sm font-bold text-gray-900">{product.farm}</h3>
+                <h3 className="text-sm font-bold text-gray-900">{product.name}</h3>
 
                 <div className="flex items-center gap-1 text-xs text-gray-500">
                   <span className="font-semibold text-amber-500">⭐ {product.rating}</span>
@@ -125,7 +98,7 @@ export default function ProductsPage() {
 
                 <div className="mt-auto flex items-end justify-between">
                   <div>
-                    <p className="text-sm font-bold text-gray-900">{product.price}</p>
+                    <p className="text-sm font-bold text-gray-900">{formatPrice(product)}</p>
                     <p className="text-xs text-gray-400">{product.stock}</p>
                   </div>
 
