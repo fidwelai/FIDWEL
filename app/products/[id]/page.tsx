@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -35,6 +35,20 @@ function normalizeUnit(name: string, unit: string): string {
 }
 
 export default function ProductDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-gray-50 p-8 text-center text-gray-600">
+          Loading product details…
+        </main>
+      }
+    >
+      <ProductDetailContent />
+    </Suspense>
+  );
+}
+
+function ProductDetailContent() {
   const params = useParams<{ id: string }>();
   const productId = params?.id;
   const { addItem, count } = useCart();
