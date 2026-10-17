@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -15,11 +15,34 @@ type Product = {
   image_url: string | null;
   category_id: number | null;
   vendor_id: string;
+  created_at?: string | null;
 };
 
 type Category = {
   id: number;
   name: string;
+};
+
+type MockProduct = {
+  id: string;
+  name: string;
+  vendor: string;
+  price: number;
+  category: string;
+  image: string;
+  description: string;
+};
+
+type DisplayProduct = {
+  id: number | string;
+  name: string;
+  description: string | null;
+  price: number;
+  unit: string;
+  quantity_available: number | null;
+  image_url: string | null;
+  category: string | null;
+  created_at: string | null;
 };
 
 function normalizeUnit(name: string, unit: string): string {
@@ -30,15 +53,36 @@ function normalizeUnit(name: string, unit: string): string {
   return unit;
 }
 
+const MOCK_PRODUCTS: MockProduct[] = [
+  { id: "1", name: "Fresh Plantain Bunch", vendor: "Mama Gold Farm", price: 2500, category: "Plantain", image: "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=400", description: "Fresh plantain bunch" },
+  { id: "2", name: "Catfish (Live)", vendor: "Fish Hub", price: 3500, category: "Fish", image: "https://images.unsplash.com/photo-1534766555764-ce878a5e3a2b?w=400", description: "Live catfish" },
+  { id: "3", name: "White Yam Tubers", vendor: "Yam Barn", price: 1800, category: "Yam", image: "https://images.unsplash.com/photo-1596097156937-968d8e95c8e6?w=400", description: "White yam" },
+  { id: "4", name: "Fresh Cassava", vendor: "Root Farms", price: 1200, category: "Cassava", image: "https://images.unsplash.com/photo-1543528173-d4dccdbf2e8c?w=400", description: "Fresh cassava" },
+  { id: "5", name: "Ugwu Leaves", vendor: "Green Farms", price: 500, category: "Vegetables", image: "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400", description: "Ugwu leaves" },
+  { id: "6", name: "Palm Oil 5L", vendor: "Oil Mill", price: 8000, category: "More", image: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400", description: "Palm oil" }
+];
+
+const MOCK_DISPLAY: DisplayProduct[] = MOCK_PRODUCTS.map((p) => ({
+  id: p.id,
+  name: p.name,
+  description: p.description,
+  price: p.price,
+  unit: normalizeUnit(p.name, ""),
+  quantity_available: null,
+  image_url: p.image,
+  category: p.category,
+  created_at: null,
+}));
+
 function ProductsContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") ?? "";
 
-  const [products, setProducts] = useState<Product[]>([]);
+  const [fetchedProducts, setFetchedProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState(initialQuery);
   const [debouncedSearch, setDebouncedSearch] = useState(initialQuery);
-  const [categoryId, setCategoryId] = useState("");
+  const [categoryName, setCategoryName] = useState("");
   const [sort, setSort] = useState("name");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
@@ -68,70 +112,108 @@ function ProductsContent() {
       setLoading(true);
       setError("");
 
-      let query = supabase
+      const { data, error: queryError } = await supabase
         .from("products")
         .select(
-          "id, name, description, price, unit, quantity_available, image_url, category_id, vendor_id"
+          "id, name, description, price, unit, quantity_available, image_url, category_id, vendor_id, created_at"
         )
         .eq("is_available", true)
         .eq("approval_status", "approved")
         .gt("quantity_available", 0);
 
-      const term = debouncedSearch.trim().replace(/[%,()]/g, " ");
-      if (term) {
-        query = query.or(`name.ilike.%${term}%,description.ilike.%${term}%`);
-      }
-
-      if (categoryId) {
-        query = query.eq("category_id", Number(categoryId));
-      }
-
-      const min = Number(minPrice);
-      if (minPrice.trim() && Number.isFinite(min)) {
-        query = query.gte("price", min);
-      }
-
-      const max = Number(maxPrice);
-      if (maxPrice.trim() && Number.isFinite(max)) {
-        query = query.lte("price", max);
-      }
-
-      switch (sort) {
-        case "price-asc":
-          query = query.order("price", { ascending: true });
-          break;
-        case "price-desc":
-          query = query.order("price", { ascending: false });
-          break;
-        case "newest":
-          query = query.order("created_at", { ascending: false });
-          break;
-        default:
-          query = query.order("name", { ascending: true });
-      }
-
-      const { data, error: queryError } = await query;
-
       if (queryError) {
         setError("We couldn't load products. Please try again.");
-        setProducts([]);
+        setFetchedProducts([]);
       } else {
-        const normalized = ((data ?? []) as Product[]).map((p) => ({
-          ...p,
-          unit: normalizeUnit(p.name, p.unit),
-        }));
-        setProducts(normalized);
+        setFetchedProducts((data ?? []) as Product[]);
       }
 
       setLoading(false);
     }
 
     loadProducts();
-  }, [debouncedSearch, categoryId, sort, minPrice, maxPrice]);
+  }, []);
+
+  const categoryNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    categories.forEach((category) => map.set(category.id, category.name));
+    return map;
+  }, [categories]);
+
+  const fetchedDisplay: DisplayProduct[] = useMemo(
+    () =>
+      fetchedProducts.map((product) => ({
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        unit: normalizeUnit(product.name, product.unit),
+        quantity_available: product.quantity_available,
+        image_url: product.image_url,
+        category:
+          product.category_id != null
+            ? categoryNameById.get(product.category_id) ?? null
+            : null,
+        created_at: product.created_at ?? null,
+      })),
+    [fetchedProducts, categoryNameById]
+  );
+
+  const displayProducts =
+    fetchedDisplay.length > 0 ? fetchedDisplay : MOCK_DISPLAY;
+
+  const categoryOptions = useMemo(() => {
+    const names = new Set<string>();
+    categories.forEach((category) => names.add(category.name));
+    MOCK_PRODUCTS.forEach((product) => names.add(product.category));
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [categories]);
+
+  const visibleProducts = useMemo(() => {
+    const term = debouncedSearch.trim().toLowerCase();
+    const min = Number(minPrice);
+    const max = Number(maxPrice);
+
+    const filtered = displayProducts.filter((product) => {
+      if (term) {
+        const haystack = `${product.name} ${product.description ?? ""}`.toLowerCase();
+        if (!haystack.includes(term)) {
+          return false;
+        }
+      }
+
+      if (categoryName && (product.category ?? "") !== categoryName) {
+        return false;
+      }
+
+      if (minPrice.trim() && Number.isFinite(min) && product.price < min) {
+        return false;
+      }
+
+      if (maxPrice.trim() && Number.isFinite(max) && product.price > max) {
+        return false;
+      }
+
+      return true;
+    });
+
+    return [...filtered].sort((a, b) => {
+      switch (sort) {
+        case "price-asc":
+          return a.price - b.price;
+        case "price-desc":
+          return b.price - a.price;
+        case "newest":
+          return (b.created_at ?? "").localeCompare(a.created_at ?? "");
+        default:
+          return a.name.localeCompare(b.name);
+      }
+    });
+  }, [displayProducts, debouncedSearch, categoryName, sort, minPrice, maxPrice]);
 
   const hasFilters =
     search.trim() !== "" ||
-    categoryId !== "" ||
+    categoryName !== "" ||
     sort !== "name" ||
     minPrice.trim() !== "" ||
     maxPrice.trim() !== "";
@@ -139,7 +221,7 @@ function ProductsContent() {
   function clearFilters() {
     setSearch("");
     setDebouncedSearch("");
-    setCategoryId("");
+    setCategoryName("");
     setSort("name");
     setMinPrice("");
     setMaxPrice("");
@@ -157,14 +239,14 @@ function ProductsContent() {
           />
 
           <select
-            value={categoryId}
-            onChange={(event) => setCategoryId(event.target.value)}
+            value={categoryName}
+            onChange={(event) => setCategoryName(event.target.value)}
             className="rounded-xl border bg-white px-4 py-3 outline-none focus:border-green-600"
           >
             <option value="">All categories</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
+            {categoryOptions.map((name) => (
+              <option key={name} value={name}>
+                {name}
               </option>
             ))}
           </select>
@@ -204,7 +286,9 @@ function ProductsContent() {
 
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm text-gray-500">
-              {loading ? "Searching..." : `${products.length} result${products.length === 1 ? "" : "s"}`}
+              {loading
+                ? "Searching..."
+                : `${visibleProducts.length} result${visibleProducts.length === 1 ? "" : "s"}`}
             </span>
             {hasFilters && (
               <button
@@ -229,7 +313,7 @@ function ProductsContent() {
         </p>
       )}
 
-      {!loading && !error && products.length === 0 && (
+      {!loading && !error && visibleProducts.length === 0 && (
         <div className="mt-8 rounded-2xl bg-white p-10 text-center shadow-sm">
           <div className="text-5xl">🌾</div>
           <h2 className="mt-4 text-xl font-bold">
@@ -252,9 +336,9 @@ function ProductsContent() {
         </div>
       )}
 
-      {!loading && !error && products.length > 0 && (
+      {!loading && !error && visibleProducts.length > 0 && (
         <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {products.map((product) => (
+          {visibleProducts.map((product) => (
             <article
               key={product.id}
               className="overflow-hidden rounded-2xl border bg-white shadow-sm"
@@ -276,18 +360,22 @@ function ProductsContent() {
 
                 <p className="mt-2 text-xl font-bold text-green-700">
                   ₦{Number(product.price).toLocaleString("en-NG")}
-                  <span className="ml-1 text-sm font-normal text-gray-500">
-                    / {product.unit}
-                  </span>
+                  {product.unit ? (
+                    <span className="ml-1 text-sm font-normal text-gray-500">
+                      / {product.unit}
+                    </span>
+                  ) : null}
                 </p>
 
                 <p className="mt-2 text-sm text-gray-600">
                   {product.description || "Contact the vendor for details."}
                 </p>
 
-                <p className="mt-3 text-sm text-gray-500">
-                  Available: {product.quantity_available} {product.unit}
-                </p>
+                {product.quantity_available != null && (
+                  <p className="mt-3 text-sm text-gray-500">
+                    Available: {product.quantity_available} {product.unit}
+                  </p>
+                )}
 
                 <Link
                   href={`/products/${product.id}`}
