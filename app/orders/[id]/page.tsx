@@ -108,15 +108,19 @@ function OrderDetailContent() {
       }
 
       setOrder(data as Order);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        const trackingResponse = await fetch(`/api/orders/${orderId}/delivery`, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-        const trackingPayload = await trackingResponse.json().catch(() => null) as DeliveryTracking | null;
-        if (active && trackingResponse.ok && trackingPayload) {
-          setDeliveryTracking(trackingPayload);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const trackingResponse = await fetch(`/api/orders/${orderId}/delivery`, {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          const trackingPayload = await trackingResponse.json().catch(() => null) as DeliveryTracking | null;
+          if (active && trackingResponse.ok && trackingPayload) {
+            setDeliveryTracking(trackingPayload);
+          }
         }
+      } catch {
+        // The order details remain available even if delivery tracking is temporarily unavailable.
       }
       if (active) setLoading(false);
     }
