@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     | PaystackVerifyPayload
     | null;
 
-  if (!verifyResponse.ok || !payload?.status || payload.data?.status !== "success") {
+  if (!verifyResponse.ok || !payload?.status || !payload.data || payload.data.status !== "success") {
     return Response.json({ error: "Payment was not successful." }, { status: 402 });
   }
 
