@@ -34,6 +34,7 @@ type Product = {
   price: number;
   unit: string;
   image_url: string | null;
+  rating?: number;
   location?: string;
   vendor_id?: string;
   vendor_profiles?: {
@@ -45,17 +46,20 @@ type Product = {
 type CategoryItem = {
   name: string;
   iconType: string;
+  emoji: string;
+  bg: string;
+  ink: string;
 };
 
 const DEFAULT_CATEGORIES: CategoryItem[] = [
-  { name: "Plantain", iconType: "plantain" },
-  { name: "Fish", iconType: "fish" },
-  { name: "Yam", iconType: "yam" },
-  { name: "Cassava", iconType: "cassava" },
-  { name: "Vegetables", iconType: "vegetables" },
-  { name: "Fruits", iconType: "fruits" },
-  { name: "Meat", iconType: "meat" },
-  { name: "More", iconType: "more" },
+  { name: "Plantain", iconType: "plantain", emoji: "🍌", bg: "#FEF3C7", ink: "#B45309" },
+  { name: "Fish", iconType: "fish", emoji: "🐟", bg: "#DBEAFE", ink: "#1D4ED8" },
+  { name: "Yam", iconType: "yam", emoji: "🥔", bg: "#EFDCC0", ink: "#8B5E34" },
+  { name: "Cassava", iconType: "cassava", emoji: "🍠", bg: "#F3E8CF", ink: "#A16207" },
+  { name: "Vegetables", iconType: "vegetables", emoji: "🥬", bg: "#DCFCE7", ink: "#15803D" },
+  { name: "Fruits", iconType: "fruits", emoji: "🍊", bg: "#FFEDD5", ink: "#C2410C" },
+  { name: "Meat", iconType: "meat", emoji: "🥩", bg: "#FEE2E2", ink: "#B91C1C" },
+  { name: "More", iconType: "more", emoji: "…", bg: "#EEF2F0", ink: "#475569" },
 ];
 
 function normalizeUnit(name: string, unit: string): string {
@@ -69,35 +73,75 @@ function normalizeUnit(name: string, unit: string): string {
 const DEFAULT_FEATURED: Product[] = [
   {
     id: 101,
-    name: "Fresh Plantains",
-    price: 3500,
+    name: "Fresh Plantain Bunch",
+    price: 1200,
     unit: "kg",
+    rating: 4.6,
     image_url: "/images/plantain.jpg",
-    vendor_profiles: { business_name: "Green Harvest Farms", verified: true },
+    vendor_profiles: { business_name: "Emeka Farms", verified: true },
   },
   {
     id: 102,
-    name: "Fresh Farm Catfish",
-    price: 5200,
+    name: "Fresh Catfish (Live)",
+    price: 3500,
     unit: "kg",
+    rating: 4.9,
     image_url: "/images/fish.jpg",
-    vendor_profiles: { business_name: "Lakeside Aqua Farms", verified: true },
+    vendor_profiles: { business_name: "FreshCatch Farms", verified: true },
   },
   {
     id: 103,
-    name: "Fresh Cassava",
-    price: 2200,
-    unit: "kg",
+    name: "White Yam Tubers",
+    price: 2000,
+    unit: "tuber",
+    rating: 4.7,
     image_url: "/images/tubers.jpg",
-    vendor_profiles: { business_name: "Golden Tuber Agro", verified: true },
+    vendor_profiles: { business_name: "Mama Ngozi Provisions", verified: false },
   },
   {
     id: 104,
-    name: "Organic Tuber Yams",
-    price: 4500,
-    unit: "tuber",
+    name: "Fresh Cassava",
+    price: 1000,
+    unit: "kg",
+    rating: 4.4,
     image_url: "/images/tubers.jpg",
-    vendor_profiles: { business_name: "Mama Ngozi Produce", verified: false },
+    vendor_profiles: { business_name: "Farm Direct", verified: true },
+  },
+  {
+    id: 105,
+    name: "Fresh Tomatoes (Basket)",
+    price: 900,
+    unit: "basket",
+    rating: 4.8,
+    image_url: "/images/plantain.jpg",
+    vendor_profiles: { business_name: "Green Valley Farms", verified: true },
+  },
+  {
+    id: 106,
+    name: "Ugu (Pumpkin Leaves)",
+    price: 700,
+    unit: "bunch",
+    rating: 4.8,
+    image_url: "/images/plantain.jpg",
+    vendor_profiles: { business_name: "Local Greens", verified: true },
+  },
+  {
+    id: 107,
+    name: "Sweet Oranges",
+    price: 1500,
+    unit: "bag",
+    rating: 4.5,
+    image_url: "/images/plantain.jpg",
+    vendor_profiles: { business_name: "Citrus Hub", verified: true },
+  },
+  {
+    id: 108,
+    name: "Lean Beef",
+    price: 4200,
+    unit: "kg",
+    rating: 4.5,
+    image_url: "/images/fish.jpg",
+    vendor_profiles: { business_name: "Prime Meats", verified: false },
   },
 ];
 
@@ -598,6 +642,24 @@ export default function Home() {
                 }`}
               />
 
+              {/* Filter Results */}
+              <button
+                type="button"
+                onClick={() => router.push("/products")}
+                aria-label="Filter results"
+                className={`shrink-0 grid place-items-center w-8 h-8 rounded-full transition ${
+                  isDarkMode
+                    ? "bg-slate-800 text-green-400 hover:bg-slate-700"
+                    : "bg-green-50 text-green-700 hover:bg-green-100"
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                  <line x1="21" y1="6" x2="3" y2="6" />
+                  <line x1="15" y1="12" x2="3" y2="12" />
+                  <line x1="9" y1="18" x2="3" y2="18" />
+                </svg>
+              </button>
+
               {/* Location Selector Chip */}
               <button
                 type="button"
@@ -661,10 +723,13 @@ export default function Home() {
                     : "bg-white border-gray-100 hover:border-green-300 hover:bg-green-50/50"
                 }`}
               >
-                <div className={`w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center p-2 transition ${
-                  isDarkMode ? "bg-slate-800 group-hover:bg-slate-700" : "bg-gray-50 group-hover:bg-green-100/50"
-                }`}>
-                  <CategoryIcon type={cat.iconType} />
+                <div
+                  className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-2xl sm:text-3xl md:text-4xl ring-1 ring-black/5 shadow-xs transition group-hover:scale-105"
+                  style={{ backgroundColor: cat.bg, color: cat.ink }}
+                >
+                  <span aria-hidden role="img" aria-label={cat.name}>
+                    {cat.emoji}
+                  </span>
                 </div>
                 <span className={`mt-2 text-xs sm:text-sm font-semibold transition text-center truncate w-full ${
                   isDarkMode ? "text-slate-200 group-hover:text-green-400" : "text-gray-800 group-hover:text-green-700"
@@ -727,8 +792,16 @@ export default function Home() {
                     }`}>
                       {item.name}
                     </h3>
-                    {(item.vendor_profiles?.business_name || item.vendor_profiles?.verified) && (
+                    {(item.vendor_profiles?.business_name || item.vendor_profiles?.verified || item.rating) && (
                       <div className="mt-1 flex items-center gap-1.5 text-[11px] sm:text-xs min-w-0">
+                        {item.rating != null && (
+                          <span className={`flex items-center gap-0.5 font-semibold shrink-0 ${isDarkMode ? "text-slate-200" : "text-gray-800"}`}>
+                            <svg className="w-3.5 h-3.5 fill-amber-400 text-amber-400" viewBox="0 0 24 24">
+                              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                            </svg>
+                            {item.rating}
+                          </span>
+                        )}
                         <span className={`truncate ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
                           {item.vendor_profiles?.business_name || ""}
                         </span>
@@ -1116,61 +1189,4 @@ export default function Home() {
   );
 }
 
-function CategoryIcon({ type }: { type: string }) {
-  switch (type) {
-    case "plantain":
-      return (
-        <span className="text-3xl sm:text-4xl filter drop-shadow-sm" role="img" aria-label="Plantain">
-          🍌
-        </span>
-      );
-    case "fish":
-      return (
-        <span className="text-3xl sm:text-4xl filter drop-shadow-sm" role="img" aria-label="Fish">
-          🐟
-        </span>
-      );
-    case "yam":
-      return (
-        <span className="text-3xl sm:text-4xl filter drop-shadow-sm" role="img" aria-label="Yam">
-          🥔
-        </span>
-      );
-    case "cassava":
-      return (
-        <span className="text-3xl sm:text-4xl filter drop-shadow-sm" role="img" aria-label="Cassava">
-          🍠
-        </span>
-      );
-    case "vegetables":
-      return (
-        <span className="text-3xl sm:text-4xl filter drop-shadow-sm" role="img" aria-label="Vegetables">
-          🥬
-        </span>
-      );
-    case "fruits":
-      return (
-        <span className="text-3xl sm:text-4xl filter drop-shadow-sm" role="img" aria-label="Fruits">
-          🍊
-        </span>
-      );
-    case "meat":
-      return (
-        <span className="text-3xl sm:text-4xl filter drop-shadow-sm" role="img" aria-label="Meat">
-          🥩
-        </span>
-      );
-    case "more":
-      return (
-        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 flex items-center justify-center">
-          <div className="flex gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
-          </div>
-        </div>
-      );
-    default:
-      return <span>🌱</span>;
-  }
-}
+
