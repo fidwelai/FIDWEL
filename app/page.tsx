@@ -779,7 +779,7 @@ export default function Home() {
                 }`}
               >
                 <Link
-                  href={`/product/${item.id}`}
+                  href={`/products/${item.id}`}
                   className="block h-36 sm:h-48 w-full overflow-hidden bg-gray-100 dark:bg-slate-800 relative"
                   aria-label={`View ${item.name}`}
                 >
@@ -793,7 +793,7 @@ export default function Home() {
                   </span>
                 </Link>
                 <div className="p-3.5 sm:p-5 flex flex-col justify-between flex-1">
-                  <Link href={`/product/${item.id}`} className="block">
+                  <Link href={`/products/${item.id}`} className="block">
                     <h3 className={`text-xs sm:text-base font-bold line-clamp-1 group-hover:text-green-600 transition ${
                       isDarkMode ? "text-white" : "text-gray-900"
                     }`}>
@@ -836,7 +836,7 @@ export default function Home() {
                       <span>Add to Cart</span>
                     </button>
                     <button
-                      onClick={() => router.push(`/product/${item.id}`)}
+                      onClick={() => router.push(`/products/${item.id}`)}
                       className={`p-2 rounded-xl border transition flex items-center justify-center ${
                         isDarkMode
                           ? "border-slate-700 text-slate-300 hover:bg-slate-800"

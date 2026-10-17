@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useCart } from "@/lib/cart";
 
@@ -31,12 +31,14 @@ function ProductDetailContent() {
   const productId = params?.id;
 
   const { addItem, count } = useCart();
+  const router = useRouter();
   const [product, setProduct] = useState<Product | null>(null);
   const [categoryName, setCategoryName] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [added, setAdded] = useState(false);
+  const [favorite, setFavorite] = useState(false);
 
   useEffect(() => {
     if (!productId) {
@@ -85,7 +87,25 @@ function ProductDetailContent() {
     loadProduct();
   }, [productId]);
 
-  function handleAddToCart() {
+  async function handleShare() {
+    if (!product) {
+      return;
+    }
+
+    const url = typeof window !== "undefined" ? window.location.href : "";
+
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({ title: product.name, url });
+      } else if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+      }
+    } catch {
+      return;
+    }
+  }
+
+  function addCurrentToCart() {
     if (!product) {
       return;
     }
@@ -100,7 +120,16 @@ function ProductDetailContent() {
       },
       quantity
     );
+  }
+
+  function handleAddToCart() {
+    addCurrentToCart();
     setAdded(true);
+  }
+
+  function handleBuyNow() {
+    addCurrentToCart();
+    router.push("/checkout");
   }
 
   return (
@@ -110,10 +139,28 @@ function ProductDetailContent() {
           <Link href="/" className="text-2xl font-bold text-green-700">
             FIDWEL
           </Link>
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-4">
             <Link href="/products" className="text-sm font-medium hover:text-green-700">
               ← Back to Products
             </Link>
+            <button
+              type="button"
+              onClick={handleShare}
+              className="text-sm font-medium text-gray-600 hover:text-green-700"
+            >
+              Share
+            </button>
+            <button
+              type="button"
+              onClick={() => setFavorite((value) => !value)}
+              aria-pressed={favorite}
+              aria-label="Add to favourites"
+              className={`text-lg leading-none transition ${
+                favorite ? "text-red-500" : "text-gray-400 hover:text-red-500"
+              }`}
+            >
+              ♥
+            </button>
             <Link
               href="/cart"
               className="rounded-full bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800"
@@ -210,12 +257,20 @@ function ProductDetailContent() {
                 </span>
               </div>
 
-              <button
-                onClick={handleAddToCart}
-                className="mt-6 w-full rounded-xl bg-green-700 px-4 py-3 font-semibold text-white hover:bg-green-800"
-              >
-                Add to Cart
-              </button>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <button
+                  onClick={handleAddToCart}
+                  className="flex-1 rounded-xl bg-green-700 px-4 py-3 font-semibold text-white hover:bg-green-800"
+                >
+                  Add to Cart
+                </button>
+                <button
+                  onClick={handleBuyNow}
+                  className="flex-1 rounded-xl border border-green-700 px-4 py-3 font-semibold text-green-700 hover:bg-green-50"
+                >
+                  Buy Now
+                </button>
+              </div>
 
               {added && (
                 <div className="mt-4 rounded-xl bg-green-50 p-4 text-sm text-green-800">
