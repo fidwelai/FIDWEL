@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { useCart } from "@/lib/cart";
 
 type Product = {
   id: number;
@@ -25,6 +26,8 @@ const products: Product[] = [
   { id: 6, name: "Palm Oil 5L", vendor: "Oil Mill", price: 8000, oldPrice: 9500, rating: 4.9, reviews: 210, image: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400", description: "Pure palm oil 5 litres, unadulterated." },
 ];
 
+const DEMO_CART_ID_OFFSET = 1_000_000;
+
 export default function ProductDetailPage() {
   return (
     <Suspense
@@ -42,6 +45,7 @@ export default function ProductDetailPage() {
 function ProductDetailContent() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const { addItem } = useCart();
 
   const product =
     products.find((p) => p.id === Number(params?.id)) || products[0];
@@ -67,9 +71,25 @@ function ProductDetailContent() {
     }
   }
 
+  function buildCartItem() {
+    return {
+      id: product.id + DEMO_CART_ID_OFFSET,
+      name: product.name,
+      price: product.price,
+      unit: "unit",
+      image_url: product.image,
+    };
+  }
+
   function handleAddToCart() {
+    addItem(buildCartItem(), quantity);
     setAdded(true);
     window.setTimeout(() => setAdded(false), 2500);
+  }
+
+  function handleBuyNow() {
+    addItem(buildCartItem(), quantity);
+    router.push("/cart");
   }
 
   return (
@@ -192,7 +212,7 @@ function ProductDetailContent() {
           </button>
           <button
             type="button"
-            onClick={() => router.push("/cart")}
+            onClick={handleBuyNow}
             className="h-12 flex-1 rounded-xl border border-black text-sm font-semibold text-black transition hover:bg-gray-100 active:scale-[0.98]"
           >
             Buy Now
