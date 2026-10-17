@@ -74,7 +74,7 @@ export default function ProductsPage() {
               <img
                 src={product.image}
                 alt={product.name}
-                className="h-20 w-20 flex-shrink-0 rounded-lg object-cover sm:h-24 sm:w-24"
+                className="w-20 shrink-0 self-stretch rounded-lg object-cover sm:w-24"
               />
 
               <div className="flex min-w-0 flex-1 flex-col gap-1">
