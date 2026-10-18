@@ -43,7 +43,7 @@ export default function OrdersPage() {
       }
 
       if (!user) {
-        router.push("/login?next=" + encodeURIComponent("/orders"));
+        router.push("/register?next=" + encodeURIComponent("/orders"));
         return;
       }
 
@@ -76,9 +76,14 @@ export default function OrdersPage() {
           <Link href="/" className="text-2xl font-bold text-green-700">
             FIDWEL
           </Link>
-          <Link href="/products" className="text-sm font-medium hover:text-green-700">
-            ← Continue shopping
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/" className="text-sm font-semibold text-gray-700 hover:text-green-700">
+              ← Back to homepage
+            </Link>
+            <Link href="/products" className="text-sm font-medium hover:text-green-700">
+              Continue shopping →
+            </Link>
+          </div>
         </div>
       </nav>
 

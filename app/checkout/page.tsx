@@ -54,7 +54,7 @@ export default function CheckoutPage() {
       }
 
       if (!user) {
-        router.push("/login?next=" + encodeURIComponent("/checkout"));
+        router.push("/register?next=" + encodeURIComponent("/checkout"));
         return;
       }
 
@@ -221,9 +221,14 @@ export default function CheckoutPage() {
           <Link href="/" className="text-2xl font-bold text-green-700">
             FIDWEL
           </Link>
-          <Link href="/cart" className="text-sm font-medium hover:text-green-700">
-            ← Back to cart
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/" className="text-sm font-semibold text-gray-700 hover:text-green-700">
+              ← Home
+            </Link>
+            <Link href="/cart" className="text-sm font-medium hover:text-green-700">
+              ← Back to cart
+            </Link>
+          </div>
         </div>
       </nav>
 
