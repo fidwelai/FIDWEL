@@ -8,6 +8,7 @@ import { resolveAccountDestination } from "@/lib/account";
 import { useCart } from "@/lib/cart";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import { NIGERIAN_STATES } from "@/lib/nigeria";
+import MarketplaceTrustSections from "@/components/MarketplaceTrustSections";
 
 const THEME_EVENT = "fidwel-theme-change";
 
@@ -698,6 +699,8 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        <MarketplaceTrustSections />
 
         {/* CATEGORIES GRID */}
         <section className="space-y-4">
