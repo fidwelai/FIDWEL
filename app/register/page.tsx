@@ -13,7 +13,6 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [accountType, setAccountType] = useState("customer");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -138,7 +137,7 @@ export default function RegisterPage() {
         data: {
           full_name: fullName.trim(),
           phone: phone.trim(),
-          account_type: accountType,
+          account_type: "customer",
           ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
         },
       },
@@ -160,9 +159,12 @@ export default function RegisterPage() {
       return;
     }
 
-    // A signed-in vendor can continue to the vendor registration form.
-    if (accountType === "vendor") {
-      window.location.replace("/vendor/register");
+    // Every new account starts as a regular FIDWEL user. Role-specific
+    // onboarding happens only after the user has created and confirmed an account.
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get("next");
+    if (next && next.startsWith("/") && !next.startsWith("//")) {
+      window.location.replace(next);
       return;
     }
 
@@ -192,8 +194,8 @@ export default function RegisterPage() {
         </h1>
 
         <p className="mt-2 text-gray-600">
-          Join FIDWEL to discover agricultural products or sell
-          your products to customers.
+          Create your free FIDWEL user account first. Once you are signed in,
+          you can shop, apply to become a vendor, or access an approved agent account.
         </p>
 
         <form onSubmit={handleRegister} className="mt-8 space-y-5">
@@ -269,18 +271,6 @@ export default function RegisterPage() {
               autoComplete="tel"
               required
             />
-          </div>
-
-          <div>
-            <label className="mb-2 block font-medium">Account type *</label>
-            <select
-              value={accountType}
-              onChange={(event) => setAccountType(event.target.value)}
-              className={inputClass}
-            >
-              <option value="customer">Customer — buy products</option>
-              <option value="vendor">Vendor — sell products</option>
-            </select>
           </div>
 
           <div>
