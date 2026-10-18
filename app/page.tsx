@@ -393,6 +393,12 @@ export default function Home() {
               Home
             </Link>
             <Link
+              href="#how-it-works"
+              className={`transition hover:text-green-700 ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}
+            >
+              How It Works
+            </Link>
+            <Link
               href="/products"
               className={`transition hover:text-green-700 ${
                 isDarkMode ? "text-slate-300" : "text-gray-600"
