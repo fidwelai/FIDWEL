@@ -415,7 +415,7 @@ export default function Home() {
               Categories
             </Link>
             <Link
-              href="/vendor/register"
+              href={userEmail ? "/vendor/register" : "/register?next=%2Fvendor%2Fregister"}
               className={`transition hover:text-green-700 ${
                 isDarkMode ? "text-slate-300" : "text-gray-600"
               }`}
@@ -913,11 +913,11 @@ export default function Home() {
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="font-extrabold text-base text-green-700">FIDWEL</span>
-            <span>• Nigeria&apos;s Agricultural Marketplace</span>
+            <span>• Fresh local produce. Trusted sellers. Better connections from farm to table.</span>
           </div>
           <div className={`flex gap-6 ${isDarkMode ? "text-slate-400" : "text-gray-600"}`}>
             <Link href="/products" className="hover:text-green-700 transition">Products</Link>
-            <Link href="/vendor/register" className="hover:text-green-700 transition">Vendors</Link>
+            <Link href={userEmail ? "/vendor/register" : "/register?next=%2Fvendor%2Fregister"} className="hover:text-green-700 transition">Become a Vendor</Link>
             <Link href="/notifications" className="hover:text-green-700 transition">Notifications</Link>
             <Link href={accountDestination} className="hover:text-green-700 transition">Account</Link>
           </div>
