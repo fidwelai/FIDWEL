@@ -8,6 +8,7 @@ import { resolveAccountDestination } from "@/lib/account";
 import { useCart } from "@/lib/cart";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import { NIGERIAN_STATES } from "@/lib/nigeria";
+import MarketplaceTrustSections from "@/components/MarketplaceTrustSections";
 
 const THEME_EVENT = "fidwel-theme-change";
 
@@ -392,6 +393,12 @@ export default function Home() {
               Home
             </Link>
             <Link
+              href="#how-it-works"
+              className={`transition hover:text-green-700 ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}
+            >
+              How It Works
+            </Link>
+            <Link
               href="/products"
               className={`transition hover:text-green-700 ${
                 isDarkMode ? "text-slate-300" : "text-gray-600"
@@ -698,6 +705,8 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        <MarketplaceTrustSections />
 
         {/* CATEGORIES GRID */}
         <section className="space-y-4">
