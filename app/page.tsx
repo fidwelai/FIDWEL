@@ -601,7 +601,47 @@ export default function Home() {
 
       {/* FULL-WIDTH RESPONSIVE BODY */}
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-8 sm:space-y-12 pb-24 md:pb-16">
-        
+
+        {/* USER-FIRST ACCOUNT START */}
+        <section className={`relative overflow-hidden rounded-3xl border p-5 sm:p-7 md:p-8 ${isDarkMode ? "border-emerald-900 bg-slate-900" : "border-emerald-100 bg-gradient-to-r from-emerald-50 via-white to-lime-50"}`}>
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-2xl">
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-green-700 dark:text-green-400">
+                Welcome to FIDWEL
+              </p>
+              <h1 className={`mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl ${isDarkMode ? "text-white" : "text-gray-950"}`}>
+                Start with your free user account.
+              </h1>
+              <p className={`mt-2 text-sm leading-6 sm:text-base ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
+                Create one account to shop for fresh local produce. Once you’re signed in, you can apply to become a vendor or access an approved delivery-agent account.
+              </p>
+            </div>
+            <div className="flex w-full shrink-0 flex-col gap-3 sm:flex-row md:w-auto">
+              {!userEmail ? (
+                <>
+                  <Link href="/register" className="inline-flex min-h-12 items-center justify-center rounded-full bg-green-700 px-6 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-green-800">
+                    Create your account <span className="ml-2" aria-hidden="true">→</span>
+                  </Link>
+                  <Link href="/login" className={`inline-flex min-h-12 items-center justify-center rounded-full border px-6 py-3 text-sm font-bold transition ${isDarkMode ? "border-slate-600 text-white hover:bg-slate-800" : "border-green-200 bg-white text-green-800 hover:bg-green-50"}`}>
+                    Sign in
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link href="/vendor/register" className="inline-flex min-h-12 items-center justify-center rounded-full bg-green-700 px-6 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-green-800">
+                    Become a vendor <span className="ml-2" aria-hidden="true">→</span>
+                  </Link>
+                  {staffRole === "agent" && (
+                    <Link href="/agent" className={`inline-flex min-h-12 items-center justify-center rounded-full border px-6 py-3 text-sm font-bold transition ${isDarkMode ? "border-slate-600 text-white hover:bg-slate-800" : "border-green-200 bg-white text-green-800 hover:bg-green-50"}`}>
+                      Agent portal
+                    </Link>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </section>
+
         {/* HERO BANNER */}
         <section className="relative rounded-3xl overflow-hidden shadow-xl min-h-[260px] sm:min-h-[320px] md:min-h-[380px] flex flex-col justify-between p-6 sm:p-10 md:p-12 bg-green-950 text-white">
           {/* Background image */}
