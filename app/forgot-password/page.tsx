@@ -35,6 +35,13 @@ export default function ForgotPasswordPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-10">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm">
+                <Link
+          href="/"
+          className="mb-5 inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 transition hover:border-green-600 hover:text-green-700 focus:outline-none focus:ring-2 focus:ring-green-600"
+        >
+          <span aria-hidden="true">←</span> Back to homepage
+        </Link>
+
         <Link href="/" className="text-2xl font-extrabold text-green-700">FIDWEL</Link>
         <p className="mt-6 text-xs font-bold uppercase tracking-[0.16em] text-green-700">Account recovery</p>
         <h1 className="mt-2 text-3xl font-bold text-gray-900">Forgot your password?</h1>
