@@ -609,10 +609,10 @@ export default function Home() {
           {/* Hero Headlines */}
           <div className="relative z-10 max-w-2xl">
             <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold leading-tight drop-shadow-md text-white">
-              Fresh Agricultural Products Near You
+              Fresh Harvests Straight from Local Farms to Your Kitchen.
             </h1>
             <p className="mt-2 sm:mt-3 text-xs sm:text-base text-white/90 drop-shadow font-medium max-w-lg">
-              Quality food, Local vendors, Trusted agricultural marketplace.
+              Connect directly with verified Nigerian producers, discover nearby farm goods, and get quality agricultural products delivered to your door.
             </p>
           </div>
 
@@ -851,6 +851,49 @@ export default function Home() {
               </div>
             ))}
           </div>
+        </section>
+
+
+        {/* HOW FIDWEL WORKS — aligned with the uploaded prototype */}
+        <section id="how-it-works" className="space-y-5 sm:space-y-6">
+          <div className="text-center max-w-2xl mx-auto">
+            <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-green-700">Simple, trusted, local</p>
+            <h2 className={`mt-2 text-xl sm:text-2xl font-extrabold tracking-tight ${isDarkMode ? "text-white" : "text-gray-900"}`}>
+              Fresh Food, Without the Middlemen
+            </h2>
+            <p className={`mt-2 text-sm ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
+              A clear path from nearby producers to your kitchen.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { step: "01", title: "Choose your location", body: "Set your Nigerian state or area so FIDWEL can help you discover relevant local vendors." },
+              { step: "02", title: "Shop trusted produce", body: "Compare produce, prices, stock and seller ratings from approved vendors." },
+              { step: "03", title: "Receive your order", body: "Check out securely and follow your order through preparation and delivery." },
+            ].map((item) => (
+              <article key={item.step} className={`rounded-2xl border p-5 sm:p-6 transition hover:-translate-y-0.5 hover:shadow-md ${isDarkMode ? "bg-slate-900 border-slate-800" : "bg-white border-gray-100 shadow-xs"}`}>
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-sm font-extrabold text-green-800">{item.step}</span>
+                <h3 className={`mt-4 font-extrabold ${isDarkMode ? "text-white" : "text-gray-900"}`}>{item.title}</h3>
+                <p className={`mt-2 text-sm leading-6 ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>{item.body}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* SHOPPER AND FARMER PATHS */}
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          <article className="rounded-3xl bg-green-950 text-white p-6 sm:p-8 flex flex-col items-start gap-3 shadow-lg">
+            <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-[10px] font-extrabold tracking-widest text-emerald-300">FOR SHOPPERS</span>
+            <h2 className="text-xl sm:text-2xl font-extrabold">Find fresh food close to home.</h2>
+            <p className="max-w-xl text-sm leading-6 text-emerald-100/85">Browse local listings, compare vendors, add produce to your basket and track your order from checkout to delivery.</p>
+            <Link href="/products" className="mt-1 inline-flex items-center rounded-xl bg-emerald-400 px-5 py-3 text-sm font-extrabold text-green-950 transition hover:bg-emerald-300">Explore Marketplace <span className="ml-2">→</span></Link>
+          </article>
+          <article className={`rounded-3xl border p-6 sm:p-8 flex flex-col items-start gap-3 ${isDarkMode ? "bg-slate-900 border-slate-800" : "bg-white border-gray-100 shadow-xs"}`}>
+            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-extrabold tracking-widest text-green-800">FOR FARMERS & VENDORS</span>
+            <h2 className={`text-xl sm:text-2xl font-extrabold ${isDarkMode ? "text-white" : "text-gray-900"}`}>Grow your sales with FIDWEL.</h2>
+            <p className={`max-w-xl text-sm leading-6 ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>Build your vendor profile, subscribe to a plan, submit your details for verification, and manage products and orders in one place.</p>
+            <Link href="/vendor/register" className="mt-1 inline-flex items-center rounded-xl bg-green-700 px-5 py-3 text-sm font-extrabold text-white transition hover:bg-green-800">Become a Vendor <span className="ml-2">→</span></Link>
+          </article>
         </section>
 
       </main>
