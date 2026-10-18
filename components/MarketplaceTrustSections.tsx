@@ -130,14 +130,14 @@ export default function MarketplaceTrustSections() {
               Bring your products to more local buyers.
             </h2>
             <p className="mt-3 max-w-xl text-sm leading-6 text-emerald-100 sm:text-base">
-              Create a vendor account to start the registration process, manage your listings, and reach customers through FIDWEL.
+              Start with a free FIDWEL user account. Once you are signed in, you can continue to vendor registration, manage your listings, and reach local customers.
             </p>
           </div>
           <Link
-            href="/vendor/register"
+            href="/register?next=%2Fvendor%2Fregister"
             className="inline-flex shrink-0 items-center justify-center rounded-full bg-lime-300 px-6 py-3 text-sm font-extrabold text-emerald-950 shadow-sm transition hover:bg-lime-200 focus:outline-none focus:ring-2 focus:ring-lime-200 focus:ring-offset-2 focus:ring-offset-emerald-950"
           >
-            Become a vendor <span className="ml-2" aria-hidden="true">→</span>
+            Create account, then become a vendor <span className="ml-2" aria-hidden="true">→</span>
           </Link>
         </div>
       </section>
