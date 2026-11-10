@@ -67,9 +67,12 @@ pre-auth upload policy for the registration page).
 
 ## End-to-end workflow test
 
-Use the FIDWEL Vercel Preview deployment and test accounts, not production
-checkout or real customer/vendor records. The FIDWEL Preview Paystack public and
-secret keys should both be configured for test mode.
+**Live-data warning:** FIDWEL Preview and Production both use the same Supabase
+project. Preview signups, vendor applications, products, and orders are stored
+in the live database, and a test product may appear on the public marketplace.
+Proceed only with explicit approval to create test records in that shared
+database. Preview Paystack uses test keys; this does not isolate database
+writes.
 
 1. Sign in to Preview with an account on the `ADMIN_EMAILS` allowlist. Open
    `/agent`; admins can use the agent workspace for testing. Set a delivery
@@ -81,14 +84,17 @@ secret keys should both be configured for test mode.
    Review the report, then separately approve the vendor at `/admin/vendors`.
 4. Sign in as the test vendor and add a clearly labeled test product at
    `/vendor/products/new`. Active, verified vendors' new products are published
-   immediately, so only use test inventory that is safe to show in Preview.
+   immediately and may appear on the public Production marketplace. Use only
+   test inventory that is safe to display publicly.
 5. In a separate customer account, add the test product to the cart and check
    out with a Paystack test card. Use a delivery state and LGA matching the
    agent's saved service area.
 6. As the vendor, mark the order items shipped. As the agent, confirm pickup,
    start delivery, and mark it delivered. Check the customer's order page for
    the updated delivery status.
-7. Remove or disable the test product and test accounts/data when finished.
+7. Test records persist in the shared live database. Remove test listings
+   through the app where possible, and have an administrator clean up remaining
+   test accounts, reports, and orders using their exact test identifiers.
 
-Do not use a live Paystack card or place test listings in Production. Vendor
+Never use a live Paystack card or real customer/vendor information. Vendor
 approval and field-report review are separate admin actions.
