@@ -87,61 +87,69 @@ export default function ProductsPage() {
       setLoading(true);
       setError("");
 
-      const query = new URLSearchParams();
-      if (location) query.set("state", location);
-      const [productsResponse, { data: categoryRows, error: categoryError }] =
-        await Promise.all([
-          fetch(`/api/public/products${query.size ? `?${query}` : ""}`, {
-            cache: "no-store",
-          }),
-          supabase.from("categories").select("id, name").order("name"),
-        ]);
+      try {
+        const query = new URLSearchParams();
+        if (location) query.set("state", location);
+        const [productsResponse, { data: categoryRows, error: categoryError }] =
+          await Promise.all([
+            fetch(`/api/public/products${query.size ? `?${query}` : ""}`, {
+              cache: "no-store",
+            }),
+            supabase.from("categories").select("id, name").order("name"),
+          ]);
 
-      if (!active) return;
+        if (!active) return;
 
-      const payload = (await productsResponse.json().catch(() => null)) as
-        | { products?: Product[]; error?: string }
-        | null;
+        const payload = (await productsResponse.json().catch(() => null)) as
+          | { products?: Product[]; error?: string }
+          | null;
 
-      if (!productsResponse.ok || !payload?.products) {
-        setError("We couldn't load marketplace listings. Please refresh and try again.");
-        setProducts([]);
-        setLoading(false);
-        return;
-      }
-
-      if (categoryError) {
-        setError("We couldn't load product categories. Please refresh and try again.");
-        setProducts([]);
-        setLoading(false);
-        return;
-      }
-
-      const liveProducts = payload.products;
-      setProducts(liveProducts);
-      const categoryList = (categoryRows ?? []) as Category[];
-      setCategories(categoryList);
-      setCategoryNames(Object.fromEntries(categoryList.map((category) => [category.id, category.name])));
-
-      if (liveProducts.length > 0) {
-        const ids = liveProducts.map((product) => product.id);
-        const { data: ratingRows } = await supabase
-          .from("product_ratings")
-          .select("product_id, average_rating, review_count")
-          .in("product_id", ids);
-
-        if (active) {
-          const lookup: Record<number, Rating> = {};
-          ((ratingRows ?? []) as Rating[]).forEach((rating) => {
-            lookup[Number(rating.product_id)] = rating;
-          });
-          setRatings(lookup);
+        if (!productsResponse.ok || !payload?.products) {
+          setError("We couldn't load marketplace listings. Please refresh and try again.");
+          setProducts([]);
+          setLoading(false);
+          return;
         }
-      } else {
-        setRatings({});
-      }
 
-      if (active) setLoading(false);
+        if (categoryError) {
+          setError("We couldn't load product categories. Please refresh and try again.");
+          setProducts([]);
+          setLoading(false);
+          return;
+        }
+
+        const liveProducts = payload.products;
+        setProducts(liveProducts);
+        const categoryList = (categoryRows ?? []) as Category[];
+        setCategories(categoryList);
+        setCategoryNames(Object.fromEntries(categoryList.map((category) => [category.id, category.name])));
+
+        if (liveProducts.length > 0) {
+          const ids = liveProducts.map((product) => product.id);
+          const { data: ratingRows } = await supabase
+            .from("product_ratings")
+            .select("product_id, average_rating, review_count")
+            .in("product_id", ids);
+
+          if (active) {
+            const lookup: Record<number, Rating> = {};
+            ((ratingRows ?? []) as Rating[]).forEach((rating) => {
+              lookup[Number(rating.product_id)] = rating;
+            });
+            setRatings(lookup);
+          }
+        } else {
+          setRatings({});
+        }
+
+        if (active) setLoading(false);
+      } catch (error) {
+        if (!active) return;
+        console.error("Marketplace load error:", error);
+        setError("We couldn't load marketplace listings. Check your connection and try again.");
+        setProducts([]);
+        setLoading(false);
+      }
     }
 
     void loadMarketplace();
@@ -175,6 +183,13 @@ export default function ProductsPage() {
     });
     setAddedId(Number(product.id));
     window.setTimeout(() => setAddedId((current) => current === Number(product.id) ? null : current), 1800);
+  }
+
+  function clearFilters() {
+    setSearchOverride("");
+    setSelectedCategory("all");
+    setLocationOverride("");
+    savePreferredLocation("");
   }
 
   return (
@@ -215,7 +230,7 @@ export default function ProductsPage() {
                 onChange={(event) => {
                   const nextLocation = event.target.value;
                   setLocationOverride(nextLocation);
-                  if (nextLocation) savePreferredLocation(nextLocation);
+                  savePreferredLocation(nextLocation);
                 }}
                 className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
               >
@@ -251,7 +266,7 @@ export default function ProductsPage() {
             <div className="text-5xl">🌾</div>
             <h2 className="mt-4 text-xl font-bold text-gray-900">{products.length === 0 ? "No approved products yet" : "No matching products"}</h2>
             <p className="mt-2 text-gray-600">{products.length === 0 ? "Approved listings from active, verified vendors will appear here." : "Try another search, location, or category."}</p>
-            {(search || selectedCategory !== "all" || location) && <button onClick={() => { setSearchOverride(""); setSelectedCategory("all"); setLocationOverride(""); }} className="mt-4 font-semibold text-green-700 underline">Clear filters</button>}
+            {(search || selectedCategory !== "all" || location) && <button onClick={clearFilters} className="mt-4 font-semibold text-green-700 underline">Clear filters</button>}
           </div>
         ) : (
           <>
