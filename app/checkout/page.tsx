@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { useCart } from "@/lib/cart";
 import { computeDeliveryFee, formatNaira } from "@/lib/orders";
 import { loadPaystack, makeOrderReference } from "@/lib/paystack";
+import { getSalesTrackingId } from "@/lib/sales-tracking";
 import { NIGERIAN_STATES, getLgas } from "@/lib/nigeria";
 
 type CheckoutForm = {
@@ -171,6 +172,14 @@ export default function CheckoutPage() {
     let order: { id: string; total: number } | null = null;
 
     try {
+      let salesTrackingId: string | null = null;
+      try {
+        salesTrackingId = getSalesTrackingId();
+      } catch (trackingError) {
+        console.error("Could not read sales tracking attribution:", trackingError);
+        setStatus("Your order can continue, but this browser could not save vendor sales attribution.");
+      }
+
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: {
@@ -183,6 +192,7 @@ export default function CheckoutPage() {
             quantity: item.quantity,
           })),
           delivery: form,
+          salesTrackingId,
         }),
       });
 

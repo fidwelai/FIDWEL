@@ -11,8 +11,9 @@ Source of truth:
 [`migrations/202610150008_reviews.sql`](migrations/202610150008_reviews.sql),
 [`migrations/202610150009_product_images.sql`](migrations/202610150009_product_images.sql) and
 [`migrations/202610150010_avatars.sql`](migrations/202610150010_avatars.sql),
-[`migrations/202610150011_vendor_verification_reports.sql`](migrations/202610150011_vendor_verification_reports.sql), and
-[`migrations/202610170001_location_based_delivery_agents.sql`](migrations/202610170001_location_based_delivery_agents.sql).
+[`migrations/202610150011_vendor_verification_reports.sql`](migrations/202610150011_vendor_verification_reports.sql),
+[`migrations/202610170001_location_based_delivery_agents.sql`](migrations/202610170001_location_based_delivery_agents.sql), and
+[`migrations/202610180001_vendor_storefront_sales_tracking.sql`](migrations/202610180001_vendor_storefront_sales_tracking.sql).
 This document mirrors those migrations. If they ever disagree, the migrations
 win.
 
@@ -76,6 +77,7 @@ One row per registered vendor business.
 | `status` | `text` | no | `'pending'` | check in (`pending`, `active`, `suspended`, `rejected`) |
 | `verified` | `boolean` | no | `false` | |
 | `agent_id` | `uuid` | yes | — | FK → `auth.users(id)` `on delete set null`, added by `0004` |
+| `sales_tracking_id` | `uuid` | no | `gen_random_uuid()` | unique public storefront and sales attribution ID, added by `202610180001` |
 | `created_at` | `timestamptz` | no | `now()` | |
 | `updated_at` | `timestamptz` | no | `now()` | maintained by trigger |
 
@@ -134,7 +136,8 @@ the tables already exist.
 
 ### `public.orders`
 
-Customer orders placed at checkout. Created by `migrations/202610150002_orders.sql`.
+Customer orders placed at checkout. Created by `migrations/202610150002_orders.sql`;
+vendor sales attribution is added by `202610180001`.
 
 | Column | Type | Null | Default | Constraints |
 |--------|------|------|---------|-------------|
@@ -155,6 +158,7 @@ Customer orders placed at checkout. Created by `migrations/202610150002_orders.s
 | `delivery_town` | `text` | yes | — | |
 | `delivery_address` | `text` | yes | — | |
 | `notes` | `text` | yes | — | |
+| `sales_tracking_id` | `uuid` | yes | — | FK → `vendor_profiles(sales_tracking_id)` `on delete set null`; nullable for orders not placed through a vendor store |
 | `created_at` | `timestamptz` | no | `now()` | |
 | `updated_at` | `timestamptz` | no | `now()` | maintained by trigger |
 
@@ -254,8 +258,10 @@ respects the `reviews` policies. Read-only.
 - `products_vendor_id_idx` on `products(vendor_id)`
 - `products_public_listing_idx` on `products(approval_status, is_available, category_id)`
 - `vendor_profiles_user_id_idx` on `vendor_profiles(user_id)`
+- `vendor_profiles_sales_tracking_id_uidx` unique on `vendor_profiles(sales_tracking_id)`
 - `orders_customer_id_idx` on `orders(customer_id)`
 - `orders_status_idx` on `orders(status)`
+- `orders_sales_tracking_id_paid_idx` on `orders(sales_tracking_id, payment_status)` where tracking ID is present
 - `order_items_order_id_idx` on `order_items(order_id)`
 - `order_items_vendor_id_idx` on `order_items(vendor_id)`
 - `order_items_fulfillment_status_idx` on `order_items(fulfillment_status)`
@@ -277,7 +283,8 @@ respects the `reviews` policies. Read-only.
 | `protect_profile_role()` | `profiles_role_protected` | `before update` on `profiles` | Blocks any role change made by a signed-in request (`auth.uid()` not null). Only admin/service-role (no `auth.uid()`) can change roles. |
 | `protect_vendor_moderation_fields()` | `vendor_profiles_moderation_protected` | `before update` on `vendor_profiles` | Blocks changes to `user_id`, `status`, or `verified` by a signed-in request. |
 | `protect_product_moderation_fields()` | `products_moderation_protected` | `before update` on `products` | Blocks changes to `vendor_id` or `approval_status` by a signed-in request. |
-| `protect_order_financials()` | `orders_financials_protected` | `before update` on `orders` | Blocks changes to `status`, `payment_status`, `payment_reference`, `payment_provider`, `subtotal`, `delivery_fee`, `total`, or `customer_id` by a signed-in request. Only the payment webhook (service role, no `auth.uid()`) can advance payment and order status. |
+| `protect_order_financials()` | `orders_financials_protected` | `before update` on `orders` | Blocks changes to `status`, `payment_status`, `payment_reference`, `payment_provider`, `subtotal`, `delivery_fee`, `total`, `customer_id`, or `sales_tracking_id` by a signed-in request. Only trusted server/service-role code can advance payment and sales attribution. |
+| `get_vendor_sales_tracking_summary(uuid)` | — (API helper) | — | `SECURITY DEFINER`, service-role only. Returns paid attributed order count and the vendor's own line-item sales total. |
 | `is_public_vendor(uuid)` | — (helper) | — | `SECURITY DEFINER`, `STABLE`. Returns true when the given vendor profile is `status = 'active'` and `verified = true`. Used by the public browse policy so shoppers can check vendor status without reading vendor contact fields. |
 | `is_admin()` | — (helper) | — | `SECURITY DEFINER`, `STABLE`. Returns true when the caller's `profiles.role = 'admin'`. Added by `0004` and used by all admin read policies. |
 | `decrement_product_stock(bigint, numeric)` | — (helper) | — | `SECURITY DEFINER`. Atomically reserves stock with a conditional `update` (only when the listing is public and enough stock remains). Returns `false` when refused. Added by `0005`. |
@@ -356,7 +363,7 @@ requires `is_public_vendor(vendor_id)`.
 | Policy | Command | Roles | Condition |
 |--------|---------|-------|-----------|
 | Customers can view their own orders | `select` | authenticated | `customer_id = auth.uid()` |
-| Customers can create their own orders | `insert` | authenticated | `customer_id = auth.uid() and status = 'pending' and payment_status = 'unpaid'` |
+| Customers can create their own orders | `insert` | authenticated | `customer_id = auth.uid() and status = 'pending' and payment_status = 'unpaid' and sales_tracking_id is null` |
 | Customers can update their own orders | `update` | authenticated | `using customer_id = auth.uid()` / `with check customer_id = auth.uid()` |
 | Vendors can view orders containing their items | `select` | authenticated | `vendor_has_order(id)` |
 | Admins can view all orders | `select` | authenticated | `is_admin()` |
@@ -364,7 +371,9 @@ requires `is_public_vendor(vendor_id)`.
 The `insert` policy forces new orders to start as `pending` / `unpaid`. The
 `update` policy lets a customer fix delivery details, but the
 `protect_order_financials()` trigger rejects any change to totals, status, or
-payment fields.
+payment fields or sales attribution. Storefront attribution is checked against
+an active, verified vendor and the products in the order before the server
+records it. Only paid orders count in sales tracking.
 
 ### `order_items`
 

@@ -18,7 +18,9 @@ acquisition agents), `202610150005_product_stock.sql` (stock reservation),
 `202610150010_avatars.sql` (the `avatars` Storage bucket and its pre-auth upload
 policy), `202610150011_vendor_verification_reports.sql` (agent field reports
 with admin review), and `202610170001_location_based_delivery_agents.sql`
-(location-based delivery agent profiles, assignment, and tracking).
+(location-based delivery agent profiles, assignment, and tracking), and
+`202610180001_vendor_storefront_sales_tracking.sql` (shareable vendor stores
+and paid sales attribution).
 
 Marketplace listings are returned by `GET /api/public/products`, which exposes
 only approved products from active, verified vendors and can filter by vendor
@@ -34,6 +36,15 @@ Delivery agents can register a state/LGA service area, receive matching paid
 orders, and advance delivery status from the agent workspace. Customer-facing
 delivery status and agent details are available on the order page. This workflow
 uses service-area matching, not GPS live tracking.
+
+Active, verified vendors have a public store at `/store/{sales_tracking_id}`.
+The store displays only their approved, available products. Product visits from
+a store link retain the vendor's tracking ID in that browser for 30 days.
+Checkout attributes a paid order to that vendor only when the order includes
+one of their products; the vendor dashboard totals paid attributed orders and
+the line-item sales value for the vendor's own products. This metric is sales
+attribution, not a commission or payout calculation. The migration must be
+applied before the store links and attribution can be used.
 
 Checkout payments run through server route handlers that use the
 `SUPABASE_SECRET_KEY` (service role) and Paystack keys. Admin and agent access
@@ -86,12 +97,14 @@ writes.
    `/vendor/products/new`. Active, verified vendors' new products are published
    immediately and may appear on the public Production marketplace. Use only
    test inventory that is safe to display publicly.
-5. In a separate customer account, add the test product to the cart and check
-   out with a Paystack test card. Use a delivery state and LGA matching the
-   agent's saved service area.
+5. From `/vendor-dashboard`, copy the public store link and open it in a
+   separate browser profile. Confirm the test product appears, add it to the
+   cart, and complete checkout with a Paystack test card. Use a delivery state
+   and LGA matching the agent's saved service area.
 6. As the vendor, mark the order items shipped. As the agent, confirm pickup,
    start delivery, and mark it delivered. Check the customer's order page for
-   the updated delivery status.
+   the updated delivery status. Confirm the vendor dashboard counts the order
+   and the vendor's product subtotal after payment is confirmed.
 7. Test records persist in the shared live database. Remove test listings
    through the app where possible, and have an administrator clean up remaining
    test accounts, reports, and orders using their exact test identifiers.
