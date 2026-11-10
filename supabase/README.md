@@ -64,3 +64,31 @@ Use the Supabase SQL editor if you are not using the CLI. The migrations create
 tables, triggers, indexes, RLS policies, starter categories, and the
 `product-images` and `avatars` Storage buckets (the latter with a narrowly scoped
 pre-auth upload policy for the registration page).
+
+## End-to-end workflow test
+
+Use the FIDWEL Vercel Preview deployment and test accounts, not production
+checkout or real customer/vendor records. The FIDWEL Preview Paystack public and
+secret keys should both be configured for test mode.
+
+1. Sign in to Preview with an account on the `ADMIN_EMAILS` allowlist. Open
+   `/agent`; admins can use the agent workspace for testing. Set a delivery
+   service area and copy the vendor referral link.
+2. In a separate browser profile, create a test user from that referral link and
+   submit a vendor application with clearly identified test-business details.
+3. Back in the agent workspace, refresh the page, submit a field report for the
+   referred pending vendor, and confirm the report appears at `/admin/reports`.
+   Review the report, then separately approve the vendor at `/admin/vendors`.
+4. Sign in as the test vendor and add a clearly labeled test product at
+   `/vendor/products/new`. Active, verified vendors' new products are published
+   immediately, so only use test inventory that is safe to show in Preview.
+5. In a separate customer account, add the test product to the cart and check
+   out with a Paystack test card. Use a delivery state and LGA matching the
+   agent's saved service area.
+6. As the vendor, mark the order items shipped. As the agent, confirm pickup,
+   start delivery, and mark it delivered. Check the customer's order page for
+   the updated delivery status.
+7. Remove or disable the test product and test accounts/data when finished.
+
+Do not use a live Paystack card or place test listings in Production. Vendor
+approval and field-report review are separate admin actions.
