@@ -85,7 +85,10 @@ export default function AgentPortalPage() {
     recommendation: "follow_up" as VerificationReport["recommendation"],
     notes: "",
   });
-  const [reportMessage, setReportMessage] = useState("");
+  const [reportNotice, setReportNotice] = useState<{
+    kind: "success" | "error";
+    message: string;
+  } | null>(null);
   const [submittingReport, setSubmittingReport] = useState(false);
 
   useEffect(() => {
@@ -93,42 +96,55 @@ export default function AgentPortalPage() {
     let active = true;
 
     (async () => {
-      const pageOrigin = window.location.origin;
-      const [{ data }, { data: auth }] = await Promise.all([
-        supabase.from("vendor_profiles")
-          .select("id, business_name, status, verified, state, town, created_at")
-          .eq("agent_id", session.userId)
-          .order("created_at", { ascending: false }),
-        supabase.auth.getSession(),
-      ]);
+      try {
+        const pageOrigin = window.location.origin;
+        const [
+          { data, error: vendorsError },
+          { data: auth, error: authError },
+        ] = await Promise.all([
+          supabase.from("vendor_profiles")
+            .select("id, business_name, status, verified, state, town, created_at")
+            .eq("agent_id", session.userId)
+            .order("created_at", { ascending: false }),
+          supabase.auth.getSession(),
+        ]);
 
-      if (!active) return;
-      setOrigin(pageOrigin);
-      setVendors((data as ReferredVendor[]) ?? []);
-
-      if (auth.session) {
-        const response = await fetch("/api/agent/deliveries", {
-          headers: { Authorization: `Bearer ${auth.session.access_token}` },
-        });
-        const payload = await response.json().catch(() => null) as
-          | { profile?: DeliveryProfile | null; deliveries?: DeliveryOrder[]; error?: string }
-          | null;
+        if (vendorsError) throw new Error("Could not load your referred vendors.");
+        if (authError) throw new Error("Could not verify your staff session.");
         if (!active) return;
-        if (response.ok) {
-          const saved = payload?.profile ?? null;
-          setProfile(saved);
-          setArea({
-            state: saved?.state ?? "",
-            lga: saved?.lga ?? "",
-            town: saved?.town ?? "",
-            phone: saved?.phone ?? "",
+        setOrigin(pageOrigin);
+        setVendors((data as ReferredVendor[]) ?? []);
+
+        if (auth.session) {
+          const response = await fetch("/api/agent/deliveries", {
+            headers: { Authorization: `Bearer ${auth.session.access_token}` },
           });
-          setDeliveries(payload?.deliveries ?? []);
-        } else {
-          setError(payload?.error ?? "Could not load delivery tasks.");
+          const payload = await response.json().catch(() => null) as
+            | { profile?: DeliveryProfile | null; deliveries?: DeliveryOrder[]; error?: string }
+            | null;
+          if (!active) return;
+          if (response.ok && payload) {
+            const saved = payload.profile ?? null;
+            setProfile(saved);
+            setArea({
+              state: saved?.state ?? "",
+              lga: saved?.lga ?? "",
+              town: saved?.town ?? "",
+              phone: saved?.phone ?? "",
+            });
+            setDeliveries(payload.deliveries ?? []);
+          } else {
+            setError(payload?.error ?? "Could not load delivery tasks.");
+          }
         }
+      } catch (caught) {
+        if (active) {
+          console.error("Agent workspace load error:", caught);
+          setError(caught instanceof Error ? caught.message : "Could not load your agent workspace.");
+        }
+      } finally {
+        if (active) setLoaded(true);
       }
-      setLoaded(true);
     })();
 
     return () => { active = false; };
@@ -139,10 +155,11 @@ export default function AgentPortalPage() {
     let active = true;
 
     async function loadReports() {
-      const { data: auth } = await supabase.auth.getSession();
-      if (!auth.session) return;
-
       try {
+        const { data: auth, error: authError } = await supabase.auth.getSession();
+        if (authError) throw new Error("Could not verify your staff session.");
+        if (!auth.session) throw new Error("Your session expired. Sign in again to view field reports.");
+
         const response = await fetch("/api/agent/reports", {
           headers: { Authorization: `Bearer ${auth.session.access_token}` },
           cache: "no-store",
@@ -152,12 +169,16 @@ export default function AgentPortalPage() {
           | null;
         if (!active) return;
         if (!response.ok || !payload?.reports) {
-          setReportMessage(payload?.error ?? "Could not load field reports.");
-          return;
+          throw new Error(payload?.error ?? "Could not load field reports.");
         }
         setReports(payload.reports);
-      } catch {
-        if (active) setReportMessage("Network error while loading field reports.");
+      } catch (caught) {
+        if (active) {
+          setReportNotice({
+            kind: "error",
+            message: caught instanceof Error ? caught.message : "Could not load field reports.",
+          });
+        }
       }
     }
 
@@ -199,22 +220,20 @@ export default function AgentPortalPage() {
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
       setCopied(false);
+      setError("Could not copy the referral link. Select and copy the link from the field above.");
     }
   }
 
   async function submitReport(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setReportMessage("");
+    setReportNotice(null);
     setSubmittingReport(true);
 
-    const { data: auth } = await supabase.auth.getSession();
-    if (!auth.session) {
-      setReportMessage("Your session expired. Sign in again and retry.");
-      setSubmittingReport(false);
-      return;
-    }
-
     try {
+      const { data: auth, error: authError } = await supabase.auth.getSession();
+      if (authError) throw new Error("Could not verify your staff session.");
+      if (!auth.session) throw new Error("Your session expired. Sign in again and retry.");
+
       const response = await fetch("/api/agent/reports", {
         method: "POST",
         headers: {
@@ -227,8 +246,7 @@ export default function AgentPortalPage() {
         | { report?: VerificationReport; error?: string }
         | null;
       if (!response.ok || !payload?.report) {
-        setReportMessage(payload?.error ?? "Could not submit the field report.");
-        return;
+        throw new Error(payload?.error ?? "Could not submit the field report.");
       }
 
       setReports((current) => [payload.report!, ...current]);
@@ -240,9 +258,12 @@ export default function AgentPortalPage() {
         recommendation: "follow_up",
         notes: "",
       });
-      setReportMessage("Field report submitted for admin review.");
-    } catch {
-      setReportMessage("Network error while submitting the field report.");
+      setReportNotice({ kind: "success", message: "Field report submitted for admin review." });
+    } catch (caught) {
+      setReportNotice({
+        kind: "error",
+        message: caught instanceof Error ? caught.message : "Network error while submitting the field report.",
+      });
     } finally {
       setSubmittingReport(false);
     }
@@ -257,13 +278,24 @@ export default function AgentPortalPage() {
       const result = await authenticatedPost({ action: "save_area", ...area });
       setProfile(result.profile ?? null);
       setMessage(`Delivery area saved. ${result.assigned ?? 0} waiting order(s) matched to your area.`);
-      const { data: { session: authSession } } = await supabase.auth.getSession();
-      if (authSession) {
-        const response = await fetch("/api/agent/deliveries", {
-          headers: { Authorization: `Bearer ${authSession.access_token}` },
-        });
-        const payload = await response.json().catch(() => null);
-        if (response.ok) setDeliveries(payload.deliveries ?? []);
+      try {
+        const { data: { session: authSession }, error: authError } = await supabase.auth.getSession();
+        if (authError) throw new Error("Could not verify your staff session.");
+        if (authSession) {
+          const response = await fetch("/api/agent/deliveries", {
+            headers: { Authorization: `Bearer ${authSession.access_token}` },
+          });
+          const payload = await response.json().catch(() => null) as
+            | { deliveries?: DeliveryOrder[]; error?: string }
+            | null;
+          if (!response.ok || !payload) {
+            throw new Error(payload?.error ?? "Could not reload delivery tasks.");
+          }
+          setDeliveries(payload.deliveries ?? []);
+        }
+      } catch (caught) {
+        const detail = caught instanceof Error ? caught.message : "Could not reload delivery tasks.";
+        setError(`Your area was saved, but deliveries could not be refreshed. ${detail}`);
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not save delivery area.");
@@ -396,9 +428,16 @@ export default function AgentPortalPage() {
               <p className="mt-1 text-sm text-gray-600">
                 Submit factual checks for vendors you referred. An admin makes the final approval decision.
               </p>
-              {reportMessage && (
-                <p role="status" className="mt-3 rounded-lg bg-green-50 p-3 text-sm text-green-800">
-                  {reportMessage}
+              {reportNotice && (
+                <p
+                  role={reportNotice.kind === "error" ? "alert" : "status"}
+                  className={`mt-3 rounded-lg p-3 text-sm ${
+                    reportNotice.kind === "error"
+                      ? "bg-red-50 text-red-800"
+                      : "bg-green-50 text-green-800"
+                  }`}
+                >
+                  {reportNotice.message}
                 </p>
               )}
               {vendors.filter((vendor) => vendor.status === "pending").length === 0 ? (
