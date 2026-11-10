@@ -56,7 +56,11 @@ export async function POST(request: Request) {
     return badRequest("Your session has expired. Please sign in again.", 401);
   }
 
-  let body: { items?: IncomingItem[]; delivery?: DeliveryDetails };
+  let body: {
+    items?: IncomingItem[];
+    delivery?: DeliveryDetails;
+    salesTrackingId?: unknown;
+  };
   try {
     body = await request.json();
   } catch {
@@ -145,6 +149,30 @@ export async function POST(request: Request) {
 
   const deliveryFee = computeDeliveryFee(subtotal);
   const total = subtotal + deliveryFee;
+  const salesTrackingId =
+    typeof body.salesTrackingId === "string" ? body.salesTrackingId.trim() : "";
+  let attributedTrackingId: string | null = null;
+
+  if (salesTrackingId) {
+    const { data: referredVendor, error: trackingError } = await supabaseAdmin
+      .from("vendor_profiles")
+      .select("id, sales_tracking_id")
+      .eq("sales_tracking_id", salesTrackingId)
+      .eq("status", "active")
+      .eq("verified", true)
+      .maybeSingle();
+
+    if (trackingError) {
+      return badRequest("We could not verify the vendor tracking link.", 500);
+    }
+
+    if (
+      referredVendor &&
+      orderItems.some((item) => item.vendor_id === referredVendor.id)
+    ) {
+      attributedTrackingId = referredVendor.sales_tracking_id;
+    }
+  }
 
   // Reserve stock atomically. If any line cannot be reserved, release the ones
   // already reserved and stop — the order is never created, so a shopper can
@@ -197,6 +225,7 @@ export async function POST(request: Request) {
       delivery_town: deliveryTown || null,
       delivery_address: deliveryAddress,
       notes: notes || null,
+      sales_tracking_id: attributedTrackingId,
     })
     .select("id, total, currency")
     .single();

@@ -1,9 +1,29 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useCart } from "@/lib/cart";
+import { NIGERIAN_STATES } from "@/lib/nigeria";
+import {
+  getPreferredLocationServerSnapshot,
+  getPreferredLocationSnapshot,
+  savePreferredLocation,
+  subscribeToPreferredLocation,
+} from "@/lib/location";
+
+function subscribeToSearch(callback: () => void) {
+  window.addEventListener("popstate", callback);
+  return () => window.removeEventListener("popstate", callback);
+}
+
+function getSearchSnapshot() {
+  return window.location.search;
+}
+
+function getSearchServerSnapshot() {
+  return "";
+}
 
 type Product = {
   id: number;
@@ -15,6 +35,10 @@ type Product = {
   image_url: string | null;
   category_id: number | null;
   vendor_id: string;
+  vendor_profiles:
+    | { business_name: string; state: string | null; lga: string | null; town: string | null }
+    | { business_name: string; state: string | null; lga: string | null; town: string | null }[]
+    | null;
 };
 
 type Rating = {
@@ -31,15 +55,30 @@ function naira(value: number) {
 
 export default function ProductsPage() {
   const { addItem, count } = useCart();
+  const searchSnapshot = useSyncExternalStore(
+    subscribeToSearch,
+    getSearchSnapshot,
+    getSearchServerSnapshot
+  );
+  const preferredLocation = useSyncExternalStore(
+    subscribeToPreferredLocation,
+    getPreferredLocationSnapshot,
+    getPreferredLocationServerSnapshot
+  );
+  const queryParams = new URLSearchParams(searchSnapshot);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [ratings, setRatings] = useState<Record<number, Rating>>({});
   const [categoryNames, setCategoryNames] = useState<Record<number, string>>({});
-  const [search, setSearch] = useState("");
+  const [searchOverride, setSearchOverride] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [locationOverride, setLocationOverride] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [addedId, setAddedId] = useState<number | null>(null);
+
+  const search = searchOverride ?? queryParams.get("q") ?? "";
+  const location = locationOverride ?? queryParams.get("location") ?? preferredLocation;
 
   useEffect(() => {
     let active = true;
@@ -48,59 +87,76 @@ export default function ProductsPage() {
       setLoading(true);
       setError("");
 
-      const [{ data: rows, error: productsError }, { data: categoryRows }] =
-        await Promise.all([
-          supabase
-            .from("products")
-            .select("id, name, description, price, unit, quantity_available, image_url, category_id, vendor_id")
-            .eq("approval_status", "approved")
-            .eq("is_available", true)
-            .gt("quantity_available", 0)
-            .order("created_at", { ascending: false }),
-          supabase.from("categories").select("id, name").order("name"),
-        ]);
+      try {
+        const query = new URLSearchParams();
+        if (location) query.set("state", location);
+        const [productsResponse, { data: categoryRows, error: categoryError }] =
+          await Promise.all([
+            fetch(`/api/public/products${query.size ? `?${query}` : ""}`, {
+              cache: "no-store",
+            }),
+            supabase.from("categories").select("id, name").order("name"),
+          ]);
 
-      if (!active) return;
+        if (!active) return;
 
-      if (productsError) {
-        setError("We couldn't load marketplace listings. Please refresh and try again.");
+        const payload = (await productsResponse.json().catch(() => null)) as
+          | { products?: Product[]; error?: string }
+          | null;
+
+        if (!productsResponse.ok || !payload?.products) {
+          setError("We couldn't load marketplace listings. Please refresh and try again.");
+          setProducts([]);
+          setLoading(false);
+          return;
+        }
+
+        if (categoryError) {
+          setError("We couldn't load product categories. Please refresh and try again.");
+          setProducts([]);
+          setLoading(false);
+          return;
+        }
+
+        const liveProducts = payload.products;
+        setProducts(liveProducts);
+        const categoryList = (categoryRows ?? []) as Category[];
+        setCategories(categoryList);
+        setCategoryNames(Object.fromEntries(categoryList.map((category) => [category.id, category.name])));
+
+        if (liveProducts.length > 0) {
+          const ids = liveProducts.map((product) => product.id);
+          const { data: ratingRows } = await supabase
+            .from("product_ratings")
+            .select("product_id, average_rating, review_count")
+            .in("product_id", ids);
+
+          if (active) {
+            const lookup: Record<number, Rating> = {};
+            ((ratingRows ?? []) as Rating[]).forEach((rating) => {
+              lookup[Number(rating.product_id)] = rating;
+            });
+            setRatings(lookup);
+          }
+        } else {
+          setRatings({});
+        }
+
+        if (active) setLoading(false);
+      } catch (error) {
+        if (!active) return;
+        console.error("Marketplace load error:", error);
+        setError("We couldn't load marketplace listings. Check your connection and try again.");
         setProducts([]);
         setLoading(false);
-        return;
       }
-
-      const liveProducts = (rows ?? []) as Product[];
-      setProducts(liveProducts);
-      const categoryList = (categoryRows ?? []) as Category[];
-      setCategories(categoryList);
-      setCategoryNames(Object.fromEntries(categoryList.map((category) => [category.id, category.name])));
-
-      if (liveProducts.length > 0) {
-        const ids = liveProducts.map((product) => product.id);
-        const { data: ratingRows } = await supabase
-          .from("product_ratings")
-          .select("product_id, average_rating, review_count")
-          .in("product_id", ids);
-
-        if (active) {
-          const lookup: Record<number, Rating> = {};
-          ((ratingRows ?? []) as Rating[]).forEach((rating) => {
-            lookup[Number(rating.product_id)] = rating;
-          });
-          setRatings(lookup);
-        }
-      } else {
-        setRatings({});
-      }
-
-      if (active) setLoading(false);
     }
 
     void loadMarketplace();
     return () => {
       active = false;
     };
-  }, []);
+  }, [location]);
 
   const visibleProducts = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -129,6 +185,13 @@ export default function ProductsPage() {
     window.setTimeout(() => setAddedId((current) => current === Number(product.id) ? null : current), 1800);
   }
 
+  function clearFilters() {
+    setSearchOverride("");
+    setSelectedCategory("all");
+    setLocationOverride("");
+    savePreferredLocation("");
+  }
+
   return (
     <main className="min-h-screen bg-gray-50 pb-28 font-sans">
       <header className="sticky top-0 z-30 border-b bg-white/95 backdrop-blur">
@@ -150,15 +213,34 @@ export default function ProductsPage() {
             <h1 className="mt-2 text-3xl font-extrabold text-gray-900 sm:text-4xl">Fresh produce marketplace</h1>
             <p className="mt-2 max-w-2xl text-gray-600">Discover agricultural products from approved, verified FIDWEL vendors.</p>
           </div>
-          <label className="w-full md:max-w-sm">
-            <span className="sr-only">Search products</span>
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search plantain, fish, yam..."
-              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
-            />
-          </label>
+          <div className="grid w-full gap-3 md:max-w-sm sm:grid-cols-2 md:grid-cols-1">
+            <label>
+              <span className="sr-only">Search products</span>
+              <input
+                value={search}
+                onChange={(event) => setSearchOverride(event.target.value)}
+                placeholder="Search plantain, fish, yam..."
+                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
+              />
+            </label>
+            <label>
+              <span className="sr-only">Filter by vendor state</span>
+              <select
+                value={location}
+                onChange={(event) => {
+                  const nextLocation = event.target.value;
+                  setLocationOverride(nextLocation);
+                  savePreferredLocation(nextLocation);
+                }}
+                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
+              >
+                <option value="">All locations</option>
+                {NIGERIAN_STATES.map((state) => (
+                  <option key={state} value={state}>{state}</option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
 
         <div className="mt-6 flex gap-2 overflow-x-auto pb-2">
@@ -183,8 +265,8 @@ export default function ProductsPage() {
           <div className="mt-8 rounded-2xl border bg-white px-6 py-14 text-center">
             <div className="text-5xl">🌾</div>
             <h2 className="mt-4 text-xl font-bold text-gray-900">{products.length === 0 ? "No approved products yet" : "No matching products"}</h2>
-            <p className="mt-2 text-gray-600">{products.length === 0 ? "Approved listings from active, verified vendors will appear here." : "Try another search or choose a different category."}</p>
-            {products.length > 0 && <button onClick={() => { setSearch(""); setSelectedCategory("all"); }} className="mt-4 font-semibold text-green-700 underline">Clear filters</button>}
+            <p className="mt-2 text-gray-600">{products.length === 0 ? "Approved listings from active, verified vendors will appear here." : "Try another search, location, or category."}</p>
+            {(search || selectedCategory !== "all" || location) && <button onClick={clearFilters} className="mt-4 font-semibold text-green-700 underline">Clear filters</button>}
           </div>
         ) : (
           <>

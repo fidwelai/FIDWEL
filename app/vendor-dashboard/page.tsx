@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import PortalNavigation from "@/components/PortalNavigation";
 
 type VendorProfile = {
   id: string;
@@ -14,6 +15,12 @@ type VendorProfile = {
   town: string | null;
 };
 
+type SalesTrackingSummary = {
+  trackingId: string;
+  attributedOrders: number;
+  attributedSales: number;
+};
+
 export default function VendorDashboard() {
   const [vendor, setVendor] = useState<VendorProfile | null>(null);
   const [productCount, setProductCount] = useState(0);
@@ -21,6 +28,10 @@ export default function VendorDashboard() {
   const [unavailableCount, setUnavailableCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [storeUrl, setStoreUrl] = useState("");
+  const [salesTracking, setSalesTracking] = useState<SalesTrackingSummary | null>(null);
+  const [trackingMessage, setTrackingMessage] = useState("");
+  const [copiedStoreUrl, setCopiedStoreUrl] = useState(false);
 
   useEffect(() => {
     async function loadDashboard() {
@@ -61,6 +72,34 @@ export default function VendorDashboard() {
 
       setVendor(data as VendorProfile);
 
+      const { data: authSession, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        setTrackingMessage("We couldn't verify your session to load sales tracking.");
+      } else if (authSession.session) {
+        try {
+          const response = await fetch("/api/vendor/sales-tracking", {
+            headers: { Authorization: `Bearer ${authSession.session.access_token}` },
+            cache: "no-store",
+          });
+          const payload = (await response.json()) as
+            | SalesTrackingSummary
+            | { error?: string };
+          if (!response.ok || !("trackingId" in payload)) {
+            setTrackingMessage(
+              "error" in payload
+                ? payload.error ?? "We couldn't load attributed sales."
+                : "We couldn't load attributed sales."
+            );
+          } else {
+            setSalesTracking(payload);
+            setStoreUrl(`${window.location.origin}/store/${payload.trackingId}`);
+          }
+        } catch (caught) {
+          console.error("Vendor sales tracking request failed:", caught);
+          setTrackingMessage("We couldn't load attributed sales. Please refresh and try again.");
+        }
+      }
+
       const [
         { count: total, error: totalError },
         { count: available, error: availableError },
@@ -94,35 +133,24 @@ export default function VendorDashboard() {
     void loadDashboard();
   }, []);
 
-  async function handleSignOut() {
-    const { error } = await supabase.auth.signOut();
-
-    if (error) {
-      setMessage("Unable to sign out. Please try again.");
-      return;
-    }
-
-    window.location.replace("/login");
-  }
-
   const approved =
     vendor?.verified === true && vendor?.status === "active";
+  const canShareStore = approved && Boolean(storeUrl);
+
+  async function copyStoreUrl() {
+    try {
+      await navigator.clipboard.writeText(storeUrl);
+      setCopiedStoreUrl(true);
+      window.setTimeout(() => setCopiedStoreUrl(false), 2000);
+    } catch (caught) {
+      console.error("Could not copy vendor store link:", caught);
+      setTrackingMessage("Could not copy the store link. Select and copy the link manually.");
+    }
+  }
 
   return (
     <main className="min-h-screen bg-gray-50 text-gray-900">
-      <nav className="flex items-center justify-between border-b bg-white px-5 py-4 sm:px-8">
-        <Link href="/" className="text-2xl font-bold text-green-700">
-          FIDWEL
-        </Link>
-
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-gray-50"
-        >
-          Sign out
-        </button>
-      </nav>
+      <PortalNavigation portal="vendor" />
 
       <section className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
         <p className="font-semibold text-green-700">VENDOR PORTAL</p>
@@ -235,6 +263,85 @@ export default function VendorDashboard() {
                 </p>
               </div>
             </div>
+
+            <section className="mt-8 rounded-2xl border border-green-100 bg-white p-6 shadow-sm sm:p-8">
+              <div className="flex flex-wrap items-start justify-between gap-5">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-green-700">
+                    Your public FIDWEL store
+                  </p>
+                  <h2 className="mt-2 text-xl font-bold">Share your products and track sales</h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
+                    Anyone with this link can view your approved, available products and shop through the FIDWEL app. Paid purchases of your products made through this link are attributed to your store for sales tracking.
+                  </p>
+                </div>
+                <Link
+                  href={canShareStore ? storeUrl : "/vendor-dashboard"}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-disabled={!canShareStore}
+                  onClick={(event) => {
+                    if (!canShareStore) event.preventDefault();
+                  }}
+                  className={`min-h-11 inline-flex items-center rounded-xl border border-green-700 px-4 py-2.5 text-sm font-semibold text-green-800 hover:bg-green-50 ${!canShareStore ? "pointer-events-none opacity-50" : ""}`}
+                >
+                  View public store
+                </Link>
+              </div>
+
+              <label className="mt-5 block text-sm font-semibold text-gray-700" htmlFor="vendor-store-link">
+                Store link
+              </label>
+              <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+                <input
+                  id="vendor-store-link"
+                  readOnly
+                  value={canShareStore ? storeUrl : "Available after your vendor profile is approved"}
+                  onFocus={(event) => event.target.select()}
+                  className="min-h-11 min-w-0 flex-1 rounded-xl border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-700"
+                  aria-describedby="vendor-store-tracking-id"
+                />
+                <button
+                  type="button"
+                  onClick={() => void copyStoreUrl()}
+                  disabled={!canShareStore}
+                  className="min-h-11 rounded-xl bg-green-700 px-5 py-2.5 font-semibold text-white hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {copiedStoreUrl ? "Copied" : "Copy store link"}
+                </button>
+              </div>
+
+              {salesTracking?.trackingId && (
+                <p id="vendor-store-tracking-id" className="mt-3 break-all text-xs text-gray-600">
+                  Sales tracking ID: <span className="font-mono font-semibold">{salesTracking.trackingId}</span>
+                </p>
+              )}
+
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <div className="rounded-xl bg-green-50 p-4">
+                  <p className="text-sm text-green-900">Paid orders attributed to your store link</p>
+                  <p className="mt-1 text-2xl font-bold text-green-900">
+                    {salesTracking?.attributedOrders ?? (trackingMessage ? "—" : "0")}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-green-50 p-4">
+                  <p className="text-sm text-green-900">Sales from your products via this link</p>
+                  <p className="mt-1 text-2xl font-bold text-green-900">
+                    {salesTracking
+                      ? `₦${salesTracking.attributedSales.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : trackingMessage
+                        ? "—"
+                        : "₦0.00"}
+                  </p>
+                </div>
+              </div>
+              {trackingMessage && (
+                <p role="status" className="mt-3 text-sm text-amber-800">{trackingMessage}</p>
+              )}
+              <p className="mt-3 text-xs leading-5 text-gray-500">
+                Only completed, paid purchases of your own products are counted. This is sales attribution, not a commission or payout balance.
+              </p>
+            </section>
 
             <div className="mt-8">
               <h2 className="text-xl font-bold">Quick actions</h2>

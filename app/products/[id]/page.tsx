@@ -2,9 +2,10 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useCart } from "@/lib/cart";
+import { rememberSalesTrackingId } from "@/lib/sales-tracking";
 
 type PublicVendor = {
   id: string;
@@ -48,6 +49,8 @@ function normalizeUnit(name: string, unit: string): string {
 function ProductDetailContent() {
   const params = useParams<{ id: string }>();
   const productId = params?.id;
+  const searchParams = useSearchParams();
+  const trackingId = searchParams.get("ref") ?? "";
 
   const { addItem, count } = useCart();
   const router = useRouter();
@@ -60,6 +63,16 @@ function ProductDetailContent() {
   const [error, setError] = useState("");
   const [added, setAdded] = useState(false);
   const [favorite, setFavorite] = useState(false);
+
+  useEffect(() => {
+    if (!trackingId) return;
+
+    try {
+      rememberSalesTrackingId(trackingId);
+    } catch (caught) {
+      console.error("Could not save sales tracking attribution:", caught);
+    }
+  }, [trackingId]);
 
   useEffect(() => {
     if (!productId) {
@@ -111,11 +124,7 @@ function ProductDetailContent() {
   useEffect(() => {
     const vendorId = product?.vendor_id;
 
-    if (!vendorId || vendorId === "mock-vendor") {
-      setVendor(null);
-      setVendorProducts([]);
-      return;
-    }
+    if (!vendorId || vendorId === "mock-vendor") return;
 
     let active = true;
     async function loadVendor() {
@@ -346,7 +355,7 @@ function ProductDetailContent() {
           </div>
         )}
 
-        {!loading && !error && product && vendor && (
+        {!loading && !error && product && vendor?.id === product.vendor_id && (
           <section className="mt-8 rounded-3xl border bg-white p-6 shadow-sm sm:p-8">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
