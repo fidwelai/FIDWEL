@@ -5,6 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { resolveAccountDestination } from "@/lib/account";
+import {
+  getPreferredLocationServerSnapshot,
+  getPreferredLocationSnapshot,
+  savePreferredLocation,
+  subscribeToPreferredLocation,
+} from "@/lib/location";
 import { useCart } from "@/lib/cart";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import { NIGERIAN_STATES } from "@/lib/nigeria";
@@ -71,86 +77,16 @@ function normalizeUnit(name: string, unit: string): string {
   return unit;
 }
 
-const products: Product[] = [
-  {
-    id: 101,
-    name: "Fresh Plantain Bunch",
-    price: 1200,
-    unit: "kg",
-    rating: 4.6,
-    image_url: "/images/plantain.jpg",
-    vendor_profiles: { business_name: "Emeka Farms", verified: true },
-  },
-  {
-    id: 102,
-    name: "Fresh Catfish (Live)",
-    price: 3500,
-    unit: "kg",
-    rating: 4.9,
-    image_url: "/images/fish.jpg",
-    vendor_profiles: { business_name: "FreshCatch Farms", verified: true },
-  },
-  {
-    id: 103,
-    name: "White Yam Tubers",
-    price: 2000,
-    unit: "tuber",
-    rating: 4.7,
-    image_url: "/images/tubers.jpg",
-    vendor_profiles: { business_name: "Mama Ngozi Provisions", verified: false },
-  },
-  {
-    id: 104,
-    name: "Fresh Cassava",
-    price: 1000,
-    unit: "kg",
-    rating: 4.4,
-    image_url: "/images/tubers.jpg",
-    vendor_profiles: { business_name: "Farm Direct", verified: true },
-  },
-  {
-    id: 105,
-    name: "Fresh Tomatoes (Basket)",
-    price: 900,
-    unit: "basket",
-    rating: 4.8,
-    image_url: "/images/plantain.jpg",
-    vendor_profiles: { business_name: "Green Valley Farms", verified: true },
-  },
-  {
-    id: 106,
-    name: "Ugu (Pumpkin Leaves)",
-    price: 700,
-    unit: "bunch",
-    rating: 4.8,
-    image_url: "/images/plantain.jpg",
-    vendor_profiles: { business_name: "Local Greens", verified: true },
-  },
-  {
-    id: 107,
-    name: "Sweet Oranges",
-    price: 1500,
-    unit: "bag",
-    rating: 4.5,
-    image_url: "/images/plantain.jpg",
-    vendor_profiles: { business_name: "Citrus Hub", verified: true },
-  },
-  {
-    id: 108,
-    name: "Lean Beef",
-    price: 4200,
-    unit: "kg",
-    rating: 4.5,
-    image_url: "/images/fish.jpg",
-    vendor_profiles: { business_name: "Prime Meats", verified: false },
-  },
-];
-
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedLocation, setSelectedLocation] = useState("Lagos");
+  const selectedLocation = useSyncExternalStore(
+    subscribeToPreferredLocation,
+    getPreferredLocationSnapshot,
+    getPreferredLocationServerSnapshot
+  );
   const [showLocationModal, setShowLocationModal] = useState(false);
-  const [featuredProducts, setFeaturedProducts] = useState<Product[]>(products);
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [featuredError, setFeaturedError] = useState("");
   const {
     items: cart,
     count: totalCartCount,
@@ -302,36 +238,42 @@ export default function Home() {
     window.dispatchEvent(new Event(THEME_EVENT));
   }
 
-  // Load Products from Supabase or Fallback
+  // Load only live, approved listings for the selected state.
   useEffect(() => {
-    async function loadData() {
-      try {
-        const { data: prods } = await supabase
-          .from("products")
-          .select(
-            "id, name, price, unit, image_url, vendor_id, vendor_profiles(business_name, verified)"
-          )
-          .eq("is_available", true)
-          .eq("approval_status", "approved")
-          .limit(8);
+    let active = true;
 
-      if (prods && prods.length > 0) {
-        const normalized = prods.map((p) => ({
-          ...p,
-          unit: normalizeUnit(p.name, p.unit),
-          vendor_profiles: Array.isArray(p.vendor_profiles)
-            ? p.vendor_profiles[0] || null
-            : p.vendor_profiles || null,
-        }));
-        setFeaturedProducts(normalized);
-      }
+    async function loadData() {
+      setFeaturedError("");
+      try {
+        const query = new URLSearchParams({ state: selectedLocation });
+        const response = await fetch(`/api/public/products?${query}`, { cache: "no-store" });
+        const payload = (await response.json().catch(() => null)) as
+          | { products?: Product[]; error?: string }
+          | null;
+
+        if (!response.ok || !payload?.products) {
+          throw new Error(payload?.error ?? "Could not load featured products.");
+        }
+
+        if (active) {
+          setFeaturedProducts(payload.products.slice(0, 8).map((product) => ({
+            ...product,
+            unit: normalizeUnit(product.name, product.unit),
+          })));
+        }
       } catch {
-        // Fallback to default
+        if (active) {
+          setFeaturedProducts([]);
+          setFeaturedError("Featured products could not be loaded. Please try again later.");
+        }
       }
     }
 
-    loadData();
-  }, []);
+    void loadData();
+    return () => {
+      active = false;
+    };
+  }, [selectedLocation]);
 
   // Cart operations
   function addToCart(product: Product) {
@@ -357,11 +299,14 @@ export default function Home() {
   }
 
   function handleCategoryClick(catName: string) {
+    const params = new URLSearchParams();
+    if (selectedLocation) params.set("location", selectedLocation);
     if (catName === "More") {
-      router.push("/products");
+      router.push(`/products?${params}`);
       return;
     }
-    router.push(`/products?q=${encodeURIComponent(catName)}`);
+    params.set("q", catName);
+    router.push(`/products?${params}`);
   }
 
   return (
@@ -778,6 +723,15 @@ export default function Home() {
 
           {/* Product cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+            {featuredError ? (
+              <p role="alert" className="col-span-full rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                {featuredError}
+              </p>
+            ) : featuredProducts.length === 0 ? (
+              <p className="col-span-full rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-600">
+                No verified products are currently listed in {locationLabel}. Browse all products to see other locations.
+              </p>
+            ) : null}
             {featuredProducts.map((item) => (
               <div
                 key={item.id}
@@ -1177,7 +1131,7 @@ export default function Home() {
                 <button
                   key={loc}
                   onClick={() => {
-                    setSelectedLocation(loc);
+                    savePreferredLocation(loc);
                     setShowLocationModal(false);
                   }}
                   className={`w-full text-left px-4 py-3 rounded-2xl text-xs sm:text-sm font-semibold flex items-center justify-between transition ${
@@ -1204,5 +1158,3 @@ export default function Home() {
     </div>
   );
 }
-
-

@@ -10,7 +10,9 @@ Source of truth:
 [`migrations/202610150007_partial_cancel_restock.sql`](migrations/202610150007_partial_cancel_restock.sql),
 [`migrations/202610150008_reviews.sql`](migrations/202610150008_reviews.sql),
 [`migrations/202610150009_product_images.sql`](migrations/202610150009_product_images.sql) and
-[`migrations/202610150010_avatars.sql`](migrations/202610150010_avatars.sql).
+[`migrations/202610150010_avatars.sql`](migrations/202610150010_avatars.sql),
+[`migrations/202610150011_vendor_verification_reports.sql`](migrations/202610150011_vendor_verification_reports.sql), and
+[`migrations/202610170001_location_based_delivery_agents.sql`](migrations/202610170001_location_based_delivery_agents.sql).
 This document mirrors those migrations. If they ever disagree, the migrations
 win.
 
@@ -78,6 +80,33 @@ One row per registered vendor business.
 | `updated_at` | `timestamptz` | no | `now()` | maintained by trigger |
 
 `status` and `verified` are moderation fields managed by FIDWEL, not by vendors.
+
+### `public.vendor_verification_reports`
+
+Agent-submitted observations for vendors attributed to that agent. Added by
+`migrations/202610150011_vendor_verification_reports.sql`.
+
+| Column | Type | Null | Default | Constraints |
+|--------|------|------|---------|-------------|
+| `id` | `bigint` | no | identity | PK |
+| `vendor_id` | `uuid` | no | — | FK → `vendor_profiles(id)` `on delete cascade` |
+| `agent_id` | `uuid` | no | — | FK → `auth.users(id)` `on delete restrict` |
+| `identity_confirmed` | `boolean` | no | — | |
+| `location_confirmed` | `boolean` | no | — | |
+| `products_confirmed` | `boolean` | no | — | |
+| `recommendation` | `text` | no | — | `approve`, `follow_up`, or `reject` |
+| `notes` | `text` | no | `''` | maximum 2,000 characters |
+| `review_status` | `text` | no | `'pending'` | `pending` or `reviewed` |
+| `admin_notes` | `text` | yes | — | maximum 2,000 characters |
+| `reviewed_by` | `uuid` | yes | — | FK → `auth.users(id)` `on delete set null` |
+| `reviewed_at` | `timestamptz` | yes | — | |
+| `created_at` | `timestamptz` | no | `now()` | |
+
+Agents submit reports through `POST /api/agent/reports`; the server verifies
+that the target vendor is attributed to the caller. Agents and admins can read
+reports under RLS. Admin review is performed by `PATCH /api/admin/reports`.
+Agent recommendations do not approve or reject vendors; final moderation uses
+the existing admin vendor workflow.
 
 ### `public.products`
 
@@ -268,8 +297,9 @@ respects the `reviews` policies. Read-only.
 
 ## Row Level Security
 
-RLS is enabled on `profiles`, `categories`, `vendor_profiles`, `products`,
-`orders`, `order_items`, `notifications`, and `reviews`.
+RLS is enabled on `profiles`, `categories`, `vendor_profiles`,
+`vendor_verification_reports`, `products`, `orders`, `order_items`,
+`notifications`, and `reviews`.
 
 ### `profiles`
 

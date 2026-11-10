@@ -41,6 +41,14 @@ type DeliveryOrder = {
   total: number;
 };
 
+type VerificationReport = {
+  id: number;
+  vendor_id: string;
+  recommendation: "approve" | "follow_up" | "reject";
+  review_status: "pending" | "reviewed";
+  created_at: string;
+};
+
 function statusTone(status: string): string {
   if (status === "active" || status === "delivered") return "border-green-200 bg-green-50 text-green-700";
   if (status === "pending" || status === "assigned") return "border-amber-200 bg-amber-50 text-amber-700";
@@ -68,6 +76,17 @@ export default function AgentPortalPage() {
   const [busyOrder, setBusyOrder] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [reports, setReports] = useState<VerificationReport[]>([]);
+  const [reportVendorId, setReportVendorId] = useState("");
+  const [reportForm, setReportForm] = useState({
+    identityConfirmed: false,
+    locationConfirmed: false,
+    productsConfirmed: false,
+    recommendation: "follow_up" as VerificationReport["recommendation"],
+    notes: "",
+  });
+  const [reportMessage, setReportMessage] = useState("");
+  const [submittingReport, setSubmittingReport] = useState(false);
 
   useEffect(() => {
     if (!session.authorized || !session.userId) return;
@@ -115,6 +134,39 @@ export default function AgentPortalPage() {
     return () => { active = false; };
   }, [session.authorized, session.userId]);
 
+  useEffect(() => {
+    if (!session.authorized) return;
+    let active = true;
+
+    async function loadReports() {
+      const { data: auth } = await supabase.auth.getSession();
+      if (!auth.session) return;
+
+      try {
+        const response = await fetch("/api/agent/reports", {
+          headers: { Authorization: `Bearer ${auth.session.access_token}` },
+          cache: "no-store",
+        });
+        const payload = (await response.json().catch(() => null)) as
+          | { reports?: VerificationReport[]; error?: string }
+          | null;
+        if (!active) return;
+        if (!response.ok || !payload?.reports) {
+          setReportMessage(payload?.error ?? "Could not load field reports.");
+          return;
+        }
+        setReports(payload.reports);
+      } catch {
+        if (active) setReportMessage("Network error while loading field reports.");
+      }
+    }
+
+    void loadReports();
+    return () => {
+      active = false;
+    };
+  }, [session.authorized]);
+
   const referralLink = origin && session.userId ? `${origin}/vendor/register?ref=${session.userId}` : "";
   const pending = vendors.filter((vendor) => vendor.status === "pending").length;
   const active = vendors.filter((vendor) => vendor.status === "active").length;
@@ -147,6 +199,52 @@ export default function AgentPortalPage() {
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
       setCopied(false);
+    }
+  }
+
+  async function submitReport(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setReportMessage("");
+    setSubmittingReport(true);
+
+    const { data: auth } = await supabase.auth.getSession();
+    if (!auth.session) {
+      setReportMessage("Your session expired. Sign in again and retry.");
+      setSubmittingReport(false);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/agent/reports", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${auth.session.access_token}`,
+        },
+        body: JSON.stringify({ vendorId: reportVendorId, ...reportForm }),
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | { report?: VerificationReport; error?: string }
+        | null;
+      if (!response.ok || !payload?.report) {
+        setReportMessage(payload?.error ?? "Could not submit the field report.");
+        return;
+      }
+
+      setReports((current) => [payload.report!, ...current]);
+      setReportVendorId("");
+      setReportForm({
+        identityConfirmed: false,
+        locationConfirmed: false,
+        productsConfirmed: false,
+        recommendation: "follow_up",
+        notes: "",
+      });
+      setReportMessage("Field report submitted for admin review.");
+    } catch {
+      setReportMessage("Network error while submitting the field report.");
+    } finally {
+      setSubmittingReport(false);
     }
   }
 
@@ -291,6 +389,108 @@ export default function AgentPortalPage() {
                 <div className="rounded-xl bg-gray-50 p-4"><p className="text-sm text-gray-500">Active</p><p className="mt-1 text-2xl font-bold text-green-700">{active}</p></div>
               </div>
               {vendors.length === 0 ? <p className="mt-4 text-sm text-gray-500">No one has registered through your link yet.</p> : <ul className="mt-4 divide-y">{vendors.map((vendor) => <li key={vendor.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><div><p className="font-semibold">{vendor.business_name}</p><p className="text-sm text-gray-500">{[vendor.town, vendor.state].filter(Boolean).join(", ") || "Location not provided"}</p></div><span className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold capitalize ${statusTone(vendor.status)}`}>{vendor.status}</span></li>)}</ul>}
+            </div>
+
+            <div className="mt-8 rounded-2xl border bg-white p-6 shadow-sm">
+              <h2 className="text-xl font-bold">Vendor field verification</h2>
+              <p className="mt-1 text-sm text-gray-600">
+                Submit factual checks for vendors you referred. An admin makes the final approval decision.
+              </p>
+              {reportMessage && (
+                <p role="status" className="mt-3 rounded-lg bg-green-50 p-3 text-sm text-green-800">
+                  {reportMessage}
+                </p>
+              )}
+              {vendors.filter((vendor) => vendor.status === "pending").length === 0 ? (
+                <p className="mt-4 text-sm text-gray-500">No pending referred vendors need a field report.</p>
+              ) : (
+                <form onSubmit={submitReport} className="mt-5 space-y-4">
+                  <label className="block text-sm font-medium">
+                    Referred vendor
+                    <select
+                      required
+                      value={reportVendorId}
+                      onChange={(event) => setReportVendorId(event.target.value)}
+                      className="mt-1 w-full rounded-lg border bg-white px-3 py-2"
+                    >
+                      <option value="">Select a pending vendor</option>
+                      {vendors.filter((vendor) => vendor.status === "pending").map((vendor) => (
+                        <option key={vendor.id} value={vendor.id}>{vendor.business_name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {([
+                      ["identityConfirmed", "Business identity checked"],
+                      ["locationConfirmed", "Business location checked"],
+                      ["productsConfirmed", "Products or stock checked"],
+                    ] as const).map(([field, label]) => (
+                      <label key={field} className="flex items-start gap-2 text-sm text-gray-700">
+                        <input
+                          type="checkbox"
+                          checked={reportForm[field]}
+                          onChange={(event) => setReportForm((current) => ({
+                            ...current,
+                            [field]: event.target.checked,
+                          }))}
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                  <label className="block text-sm font-medium">
+                    Recommendation
+                    <select
+                      value={reportForm.recommendation}
+                      onChange={(event) => setReportForm((current) => ({
+                        ...current,
+                        recommendation: event.target.value as VerificationReport["recommendation"],
+                      }))}
+                      className="mt-1 w-full rounded-lg border bg-white px-3 py-2"
+                    >
+                      <option value="approve">Recommend approval</option>
+                      <option value="follow_up">Follow up required</option>
+                      <option value="reject">Recommend rejection</option>
+                    </select>
+                  </label>
+                  <label className="block text-sm font-medium">
+                    Visit notes
+                    <textarea
+                      value={reportForm.notes}
+                      onChange={(event) => setReportForm((current) => ({
+                        ...current,
+                        notes: event.target.value,
+                      }))}
+                      maxLength={2000}
+                      rows={3}
+                      className="mt-1 w-full rounded-lg border bg-white px-3 py-2"
+                      placeholder="Record factual observations for admin review."
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={submittingReport}
+                    className="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  >
+                    {submittingReport ? "Submitting..." : "Submit for admin review"}
+                  </button>
+                </form>
+              )}
+              {reports.length > 0 && (
+                <ul className="mt-5 divide-y border-t">
+                  {reports.map((report) => {
+                    const vendor = vendors.find((item) => item.id === report.vendor_id);
+                    return (
+                      <li key={report.id} className="flex flex-wrap justify-between gap-2 py-3 text-sm">
+                        <span>{vendor?.business_name ?? "Referred vendor"} · {titleCase(report.recommendation)}</span>
+                        <span className="text-gray-500">
+                          {titleCase(report.review_status)} · {new Date(report.created_at).toLocaleDateString("en-NG")}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           </>
         )}

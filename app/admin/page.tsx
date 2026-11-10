@@ -15,6 +15,7 @@ type Stats = {
   totalOrders: number;
   expiredSubscriptions: number;
   staleUnpaidOrders: number;
+  pendingFieldReports: number | null;
 };
 
 type PendingVendor = {
@@ -51,6 +52,7 @@ export default function AdminDashboardPage() {
         totalOrders,
         expiredSubscriptions,
         staleUnpaidOrders,
+        pendingFieldReports,
         recent,
       ] = await Promise.all([
         supabase
@@ -79,6 +81,10 @@ export default function AdminDashboardPage() {
           .eq("payment_status", "unpaid")
           .lt("created_at", staleCutoffIso),
         supabase
+          .from("vendor_verification_reports")
+          .select("id", { count: "exact", head: true })
+          .eq("review_status", "pending"),
+        supabase
           .from("vendor_profiles")
           .select("id, business_name, state, town, created_at")
           .eq("status", "pending")
@@ -99,6 +105,7 @@ export default function AdminDashboardPage() {
         totalOrders: totalOrders.count ?? 0,
         expiredSubscriptions: expiredSubscriptions.count ?? 0,
         staleUnpaidOrders: staleUnpaidOrders.count ?? 0,
+        pendingFieldReports: pendingFieldReports.error ? null : pendingFieldReports.count ?? 0,
       });
 
       setPending((recent.data as PendingVendor[]) ?? []);
@@ -190,6 +197,21 @@ export default function AdminDashboardPage() {
                   {stats?.pendingProducts ?? "—"}
                 </p>
                 <p className="mt-1 text-xs text-gray-400">Tap to review</p>
+              </Link>
+
+              <Link
+                href="/admin/reports"
+                className="rounded-2xl border bg-white p-6 shadow-sm transition hover:border-green-600"
+              >
+                <p className="text-sm text-gray-500">Agent field reports</p>
+                <p className="mt-2 text-3xl font-bold text-amber-600">
+                  {stats?.pendingFieldReports ?? "Unavailable"}
+                </p>
+                <p className="mt-1 text-xs text-gray-400">
+                  {stats?.pendingFieldReports === null
+                    ? "Apply the latest Supabase migration"
+                    : "Pending admin review"}
+                </p>
               </Link>
 
               <div className="rounded-2xl border bg-white p-6 shadow-sm">

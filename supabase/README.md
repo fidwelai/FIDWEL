@@ -16,8 +16,24 @@ acquisition agents), `202610150005_product_stock.sql` (stock reservation),
 `202610150008_reviews.sql` (product reviews and ratings),
 `202610150009_product_images.sql` (the `product-images` Storage bucket),
 `202610150010_avatars.sql` (the `avatars` Storage bucket and its pre-auth upload
-policy), and `202610170001_location_based_delivery_agents.sql` (location-based
-delivery agent profiles, assignment, and tracking).
+policy), `202610150011_vendor_verification_reports.sql` (agent field reports
+with admin review), and `202610170001_location_based_delivery_agents.sql`
+(location-based delivery agent profiles, assignment, and tracking).
+
+Marketplace listings are returned by `GET /api/public/products`, which exposes
+only approved products from active, verified vendors and can filter by vendor
+state. The home-page location choice is saved in browser storage and applied to
+that filter. This is state-level matching, not GPS-distance or route matching.
+
+Agent verification reports are submitted through `POST /api/agent/reports`.
+Agents can report only on vendors attributed to them; reports are read by their
+author and admins. Admins can add review notes and mark reports reviewed, but
+vendor approval remains a separate admin moderation action.
+
+Delivery agents can register a state/LGA service area, receive matching paid
+orders, and advance delivery status from the agent workspace. Customer-facing
+delivery status and agent details are available on the order page. This workflow
+uses service-area matching, not GPS live tracking.
 
 Checkout payments run through server route handlers that use the
 `SUPABASE_SECRET_KEY` (service role) and Paystack keys. Admin and agent access
