@@ -5,6 +5,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useStaffSession } from "@/lib/use-staff-session";
 import { STALE_UNPAID_ORDER_HOURS } from "@/lib/orders";
+import PortalNavigation from "@/components/PortalNavigation";
 
 type Stats = {
   pendingVendors: number;
@@ -120,14 +121,7 @@ export default function AdminDashboardPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <nav className="border-b bg-white px-6 py-4">
-        <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <Link href="/" className="text-2xl font-bold text-green-700">
-            FIDWEL
-          </Link>
-          <span className="text-sm text-gray-500">Admin console</span>
-        </div>
-      </nav>
+      <PortalNavigation portal="admin" />
 
       <section className="mx-auto max-w-6xl px-6 py-10">
         <h1 className="text-3xl font-bold">Admin</h1>

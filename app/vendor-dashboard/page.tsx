@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import PortalNavigation from "@/components/PortalNavigation";
 
 type VendorProfile = {
   id: string;
@@ -94,35 +95,12 @@ export default function VendorDashboard() {
     void loadDashboard();
   }, []);
 
-  async function handleSignOut() {
-    const { error } = await supabase.auth.signOut();
-
-    if (error) {
-      setMessage("Unable to sign out. Please try again.");
-      return;
-    }
-
-    window.location.replace("/login");
-  }
-
   const approved =
     vendor?.verified === true && vendor?.status === "active";
 
   return (
     <main className="min-h-screen bg-gray-50 text-gray-900">
-      <nav className="flex items-center justify-between border-b bg-white px-5 py-4 sm:px-8">
-        <Link href="/" className="text-2xl font-bold text-green-700">
-          FIDWEL
-        </Link>
-
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-gray-50"
-        >
-          Sign out
-        </button>
-      </nav>
+      <PortalNavigation portal="vendor" />
 
       <section className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
         <p className="font-semibold text-green-700">VENDOR PORTAL</p>

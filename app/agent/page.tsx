@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useStaffSession } from "@/lib/use-staff-session";
+import PortalNavigation from "@/components/PortalNavigation";
 
 type ReferredVendor = {
   id: string;
@@ -328,12 +329,7 @@ export default function AgentPortalPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <nav className="border-b bg-white px-6 py-4">
-        <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <Link href="/" className="text-2xl font-bold text-green-700">FIDWEL</Link>
-          <span className="text-sm text-gray-500">Agent portal</span>
-        </div>
-      </nav>
+      <PortalNavigation portal="agent" />
 
       <section className="mx-auto max-w-5xl px-6 py-10">
         <h1 className="text-3xl font-bold">Agent workspace</h1>
@@ -358,7 +354,7 @@ export default function AgentPortalPage() {
               <div className="rounded-2xl border bg-white p-5 shadow-sm"><p className="text-sm text-gray-500">Active referred vendors</p><p className="mt-2 text-3xl font-bold text-green-700">{active}</p></div>
             </div>
 
-            <div className="mt-8 rounded-2xl border bg-white p-6 shadow-sm">
+            <div id="delivery-area" className="mt-8 rounded-2xl border bg-white p-6 shadow-sm">
               <h2 className="text-xl font-bold">Your delivery service area</h2>
               <p className="mt-1 text-sm text-gray-600">FIDWEL matches paid orders to an active agent by state and LGA. A town-specific match is preferred when available. Use the same spelling customers enter at checkout.</p>
               <form onSubmit={saveArea} className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -381,7 +377,7 @@ export default function AgentPortalPage() {
               </form>
             </div>
 
-            <div className="mt-8 rounded-2xl border bg-white p-6 shadow-sm">
+            <div id="assigned-deliveries" className="mt-8 rounded-2xl border bg-white p-6 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div><h2 className="text-xl font-bold">Assigned deliveries</h2><p className="mt-1 text-sm text-gray-600">Only paid orders assigned to your account appear here.</p></div>
                 <button onClick={() => window.location.reload()} className="rounded-lg border px-4 py-2 text-sm font-semibold hover:bg-gray-50">Refresh</button>
@@ -408,7 +404,7 @@ export default function AgentPortalPage() {
               )}
             </div>
 
-            <div className="mt-8 rounded-2xl border bg-white p-6 shadow-sm">
+            <div id="vendor-referrals" className="mt-8 rounded-2xl border bg-white p-6 shadow-sm">
               <h2 className="text-xl font-bold">Vendor referral link</h2>
               <p className="mt-1 text-sm text-gray-600">Your existing vendor acquisition link still works.</p>
               <div className="mt-3 flex flex-col gap-3 sm:flex-row">
@@ -423,7 +419,7 @@ export default function AgentPortalPage() {
               {vendors.length === 0 ? <p className="mt-4 text-sm text-gray-500">No one has registered through your link yet.</p> : <ul className="mt-4 divide-y">{vendors.map((vendor) => <li key={vendor.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><div><p className="font-semibold">{vendor.business_name}</p><p className="text-sm text-gray-500">{[vendor.town, vendor.state].filter(Boolean).join(", ") || "Location not provided"}</p></div><span className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold capitalize ${statusTone(vendor.status)}`}>{vendor.status}</span></li>)}</ul>}
             </div>
 
-            <div className="mt-8 rounded-2xl border bg-white p-6 shadow-sm">
+            <div id="field-verification" className="mt-8 rounded-2xl border bg-white p-6 shadow-sm">
               <h2 className="text-xl font-bold">Vendor field verification</h2>
               <p className="mt-1 text-sm text-gray-600">
                 Submit factual checks for vendors you referred. An admin makes the final approval decision.
